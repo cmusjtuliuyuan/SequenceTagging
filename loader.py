@@ -45,14 +45,14 @@ def check_tag_chunking(sentences):
 
 
 
-def word_mapping(sentences, lower):
+def word_mapping(sentences, lower,vocabulary_size):
     """
     Create a dictionary and a mapping of words, sorted by frequency.
     """
     words = [[x[0].lower() if lower else x[0] for x in s] for s in sentences]
     dico = create_dico(words)
     dico['<UNK>'] = 10000000
-    word_to_id, id_to_word = create_mapping(dico)
+    word_to_id, id_to_word = create_mapping(dico, vocabulary_size)
     print ("Found %i unique words (%i in total)" % 
         (len(dico), sum(len(x) for x in words))
     )
@@ -165,6 +165,7 @@ def load_train_step_datasets(parameters):
     lower = parameters['lower']
     zeros = parameters['zeros']
     train_path = parameters['train']
+    vocabulary_size = parameters['vocab_size']
 
     # Load sentences
     train_sentences = load_sentences(train_path, lower, zeros)
@@ -175,7 +176,7 @@ def load_train_step_datasets(parameters):
     # Create a dictionary / mapping of words
     # If we use pretrained embeddings, we add them to the dictionary.
     if parameters['pre_emb']:
-        dico_words_train = word_mapping(train_sentences, lower)[0]
+        dico_words_train = word_mapping(train_sentences, lower, vocabulary_size)[0]
         dico_words, word_to_id, id_to_word = augment_with_pretrained(
             dico_words_train.copy(),
             parameters['pre_emb'],
@@ -185,7 +186,8 @@ def load_train_step_datasets(parameters):
         )
     else:
         #{word: number}
-        dico_words, word_to_id, id_to_word = word_mapping(train_sentences, lower)
+        dico_words, word_to_id, id_to_word = word_mapping(train_sentences, 
+                                                lower,vocabulary_size)
         dico_words_train = dico_words
 
     # Create a dictionary and a mapping for tags
@@ -202,4 +204,4 @@ def load_train_step_datasets(parameters):
     print('Saving the mappings to disk...')
     save_mappings(id_to_word, id_to_tag, parameters['save_emb'])
 
-    return train_data
+    return train_data, len(tag_to_id)
