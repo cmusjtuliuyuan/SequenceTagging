@@ -53,8 +53,8 @@ def word_mapping(sentences, lower):
     dico = create_dico(words)
     dico['<UNK>'] = 10000000
     word_to_id, id_to_word = create_mapping(dico)
-    print "Found %i unique words (%i in total)" % (
-        len(dico), sum(len(x) for x in words)
+    print ("Found %i unique words (%i in total)" % 
+        (len(dico), sum(len(x) for x in words))
     )
     return dico, word_to_id, id_to_word
 
@@ -66,8 +66,9 @@ def tag_mapping(sentences):
     tags = [[word[-1] for word in s] for s in sentences]
     dico = create_dico(tags)
     tag_to_id, id_to_tag = create_mapping(dico)
-    print "Found %i unique named entity tags" % len(dico)
+    print("Found %i unique named entity tags" % (len(dico)))
     return dico, tag_to_id, id_to_tag
+
 
 def save_mappings(id_to_word, id_to_tag, mappings_path):
         """
@@ -79,6 +80,7 @@ def save_mappings(id_to_word, id_to_tag, mappings_path):
                 'id_to_tag': id_to_tag,
             }
             cPickle.dump(mappings, f)
+
 
 def cap_feature(s):
     """
@@ -96,6 +98,7 @@ def cap_feature(s):
         return 2
     else:
         return 3
+
 
 def prepare_dataset(sentences, word_to_id, tag_to_id, lower=False):
     """
@@ -127,7 +130,7 @@ def augment_with_pretrained(dictionary, ext_emb_path, words):
     to the dictionary, otherwise, we only add the words that are given by
     `words` (typically the words in the development and test sets.)
     """
-    print 'Loading pretrained embeddings from %s...' % ext_emb_path
+    print('Loading pretrained embeddings from %s...' % (ext_emb_path))
     assert os.path.isfile(ext_emb_path)
 
     # Load pretrained embeddings from file
@@ -155,3 +158,48 @@ def augment_with_pretrained(dictionary, ext_emb_path, words):
 
     word_to_id, id_to_word = create_mapping(dictionary)
     return dictionary, word_to_id, id_to_word
+
+
+def load_train_step_datasets(parameters):
+    # Data parameters
+    lower = parameters['lower']
+    zeros = parameters['zeros']
+    train_path = parameters['train']
+
+    # Load sentences
+    train_sentences = load_sentences(train_path, lower, zeros)
+
+    # Use selected tagging scheme
+    check_tag_chunking(train_sentences)
+
+    # Create a dictionary / mapping of words
+    # If we use pretrained embeddings, we add them to the dictionary.
+    if parameters['pre_emb']:
+        dico_words_train = word_mapping(train_sentences, lower)[0]
+        dico_words, word_to_id, id_to_word = augment_with_pretrained(
+            dico_words_train.copy(),
+            parameters['pre_emb'],
+            list(itertools.chain.from_iterable(
+                [[w[0] for w in s] for s in dev_sentences + test_sentences])
+            ) if not parameters['all_emb'] else None
+        )
+    else:
+        #{word: number}
+        dico_words, word_to_id, id_to_word = word_mapping(train_sentences, lower)
+        dico_words_train = dico_words
+
+    # Create a dictionary and a mapping for tags
+    dico_tags, tag_to_id, id_to_tag = tag_mapping(train_sentences)
+
+    # index data
+    train_data = prepare_dataset(
+        train_sentences, word_to_id, tag_to_id, lower
+    )
+
+    print("%i sentences in train ."%(len(train_data)))
+
+    # Save the mappings to disk
+    print('Saving the mappings to disk...')
+    save_mappings(id_to_word, id_to_tag, parameters['save_emb'])
+
+    return train_data
