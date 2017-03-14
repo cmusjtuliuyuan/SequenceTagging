@@ -3,6 +3,10 @@ import os
 from collections import OrderedDict
 from loader import load_train_step_datasets
 import model
+import torch
+import torch.autograd as autograd
+import torch.nn as nn
+import torch.optim as optim
 
 
 #TO DO add Dictionary size
@@ -56,7 +60,6 @@ assert os.path.isfile(opts.train)
 
 # load datasets
 train_data, tagset_size= load_train_step_datasets(Parse_parameters)
-print(train_data[0]['words'])
 
 #embedding_dim, hidden_dim, vocab_size, tagset_size
 # Model parameters
@@ -66,6 +69,31 @@ Model_parameters['embedding_dim'] = opts.embedding_dim
 Model_parameters['hidden_dim'] = opts.hidden_dim
 Model_parameters['tagset_size'] = tagset_size
 
+
 model = model.LSTMTagger(Model_parameters)
+loss_function = nn.NLLLoss()
+optimizer = optim.SGD(model.parameters(), lr=0.1)
 
 
+
+for epoch in xrange(1000): # again, normally you would NOT do 300 epochs, it is toy data
+    for data in train_data:
+        # Step 1. Remember that Pytorch accumulates gradients.  We need to clear them out
+        # before each instance
+        model.zero_grad()
+    
+        # Step 2. Get our inputs ready for the network, that is, turn them into Variables
+        # of word indices.
+        sentence_in = autograd.Variable(torch.LongTensor(data['words']))
+        targets = autograd.Variable(torch.LongTensor(data['tags']))
+    
+        # Step 3. Run our forward pass.
+        tag_scores = model(sentence_in)
+    
+        # Step 4. Compute the loss, gradients, and update the parameters by calling
+        # optimizer.step()
+        loss = loss_function(tag_scores, targets)
+        print(loss)
+        loss.backward()
+        optimizer.step()
+print("haha")
