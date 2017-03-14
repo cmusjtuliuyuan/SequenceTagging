@@ -9,6 +9,7 @@ LSTM in PyTorch training part is done.
 I am implementing the evaluation part now...
 
 Some of the code is from https://github.com/glample/tagger
+I want to make the structure of my code is similar with /glample/tagger as much as possible.
 
 We will use the following dataset now, text chunking
 http://www.cnts.ua.ac.be/conll2000/chunking/
