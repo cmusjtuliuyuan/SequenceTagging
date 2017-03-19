@@ -38,10 +38,10 @@ def check_tag_chunking(sentences):
             if tag == 'O':
                 continue
             split = tag.split('-')
-            if len(split) != 2 or split[0] not in ['I', 'B'] \
-                        or split[1] not in ['NP', 'VP', 'PP', 'SBAR', 'ADVP','ADJP']:
-                print(split)
-                raise Exception('Unknown tagging scheme!')
+            #if len(split) != 2 or split[0] not in ['I', 'B'] \
+            #            or split[1] not in ['NP', 'VP', 'PP', 'SBAR', 'ADVP','ADJP']:
+            #    print(split)
+            #    raise Exception('Unknown tagging scheme!')
 
 
 
@@ -188,7 +188,6 @@ def load_train_step_datasets(parameters):
         #{word: number}
         dico_words, word_to_id, id_to_word = word_mapping(train_sentences, 
                                                 lower,vocabulary_size)
-        dico_words_train = dico_words
 
     # Create a dictionary and a mapping for tags
     dico_tags, tag_to_id, id_to_tag = tag_mapping(train_sentences)
@@ -204,4 +203,24 @@ def load_train_step_datasets(parameters):
     print('Saving the mappings to disk...')
     save_mappings(id_to_word, id_to_tag, parameters['save_emb'])
 
-    return train_data, len(tag_to_id)
+    dictionaries = {
+        'word_to_id': word_to_id,
+        'id_to_word': id_to_word,
+        'tag_to_id': tag_to_id,
+        'id_to_tag': id_to_tag,
+    }
+
+    return train_data, len(tag_to_id), dictionaries
+
+def load_test_step_datasets(parameters, test_path, dictionaries):
+    # Data parameters
+    lower = parameters['lower']
+    zeros = parameters['zeros']
+    vocabulary_size = parameters['vocab_size']
+
+    # Load sentences
+    test_sentences = load_sentences(test_path, lower, zeros)
+    test_data = prepare_dataset(
+        test_sentences, dictionaries['word_to_id'], dictionaries['tag_to_id'], lower
+    )
+    return test_data
