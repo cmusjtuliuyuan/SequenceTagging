@@ -42,11 +42,10 @@ def evaluate(model, sentences, dictionaries):
     Evaluate current model using CoNLL script.
     """
     output_path = 'tmp/evaluate.txt'
-    score_path = 'tmp/score.txt'
+    scores_path = 'tmp/score.txt'
     eval_script = './tmp/conlleval'
     with codecs.open(output_path, 'w', 'utf8') as f:
-    #   for i in xrange(len(sentences)):
-        for index in xrange(2):
+       for index in xrange(len(sentences)):
             #input sentence
             sentence_in = autograd.Variable(torch.LongTensor(sentences[index]['words']))
 
@@ -68,4 +67,13 @@ def evaluate(model, sentences, dictionaries):
             f.write('\n')
 
     os.system("%s < %s > %s" % (eval_script, output_path, scores_path))
-
+    eval_lines = [l.rstrip() for l in codecs.open(scores_path, 'r', 'utf8')]
+    result={
+       'accuracy' : float(eval_lines[1].strip().split()[1][:-2]),
+       'precision': float(eval_lines[1].strip().split()[3][:-2]),
+       'recall': float(eval_lines[1].strip().split()[5][:-2]),
+       'FB1': float(eval_lines[1].strip().split()[7])
+    }
+    print(eval_lines[1])
+    return result
+    

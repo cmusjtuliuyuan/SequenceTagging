@@ -9,6 +9,7 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from utils import evaluate
+import matplotlib.pyplot as plt
 
 #TO DO add Dictionary size
 
@@ -21,10 +22,10 @@ optparser.add_option(
     "-D", "--dev", default="data/conll2000.test.txt",
     help="Development dataset"
 )
-optparser.add_option(
-    "-t", "--test", default="data/eng.testb",
-    help="Development dataset"
-)
+#optparser.add_option(
+#    "-t", "--test", default="data/eng.testb",
+#    help="Development dataset"
+#)
 optparser.add_option(
     "-l", "--lower", default="0",
     type='int', help="Lowercase words (this will not affect character inputs)"
@@ -67,7 +68,7 @@ Parse_parameters['vocab_size'] = opts.vocab_size
 # Check parameters validity
 assert os.path.isfile(opts.train)
 assert os.path.isfile(opts.dev)
-assert os.path.isfile(opts.test)
+#assert os.path.isfile(opts.test)
 
 # load datasets
 train_data, tagset_size, dictionaries = load_train_step_datasets(Parse_parameters)
@@ -87,12 +88,16 @@ model = model.LSTMTagger(Model_parameters)
 loss_function = nn.NLLLoss()
 optimizer = optim.SGD(model.parameters(), lr=0.1)
 
-n_epochs = 1  # number of epochs over the training set
-freq_eval = 1  # evaluate on dev every freq_eval steps
+n_epochs = 10  # number of epochs over the training set
 count = 0
 
 evaluate(model, dev_data, dictionaries)
-'''
+accuracys = []
+precisions = []
+recalls = []
+FB1s =[]
+
+
 for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it is toy data
 		epoch_costs = []
 		print("Starting epoch %i..." % (epoch))
@@ -116,10 +121,20 @@ for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it
 				loss.backward()
 				optimizer.step()
 
-				#Evaluate on development set and test set
-				if count % freq_eval == 0:
-							dev_score = evaluate(model, dev_sentences, dictionaries)
+				#if i%100 == 0:
+				#	print("Interation:"+str(i))
 				
 		print("Epoch %i, cost average: %f" % (epoch, np.mean(epoch_costs)))
-'''
-print("haha")
+		eval_result = evaluate(model, dev_data, dictionaries)
+		accuracys.append(eval_result['accuracy'])
+		precisions.append(eval_result['precision'])
+		recalls.append(eval_result['recall'])
+		FB1s.append(eval_result['FB1'])
+
+
+print("Plot final result")
+fig = plt.figure()
+
+
+
+plt.show()
