@@ -113,11 +113,13 @@ def prepare_dataset(sentences, word_to_id, tag_to_id, lower=False):
         words = [word_to_id[f(w) if f(w) in word_to_id else '<UNK>']
                  for w in str_words]
         caps = [cap_feature(w) for w in str_words]
+        pos = [w[1] for w in s]
         tags = [tag_to_id[w[-1]] for w in s]
         data.append({
             'str_words': str_words,
             'words': words,
             'caps': caps,
+            'pos': pos,
             'tags': tags,
         })
     return data
@@ -175,6 +177,7 @@ def load_train_step_datasets(parameters):
 
     # Create a dictionary / mapping of words
     # If we use pretrained embeddings, we add them to the dictionary.
+    '''
     if parameters['pre_emb']:
         dico_words_train = word_mapping(train_sentences, lower, vocabulary_size)[0]
         dico_words, word_to_id, id_to_word = augment_with_pretrained(
@@ -186,7 +189,8 @@ def load_train_step_datasets(parameters):
         )
     else:
         #{word: number}
-        dico_words, word_to_id, id_to_word = word_mapping(train_sentences, 
+    '''
+    dico_words, word_to_id, id_to_word = word_mapping(train_sentences, 
                                                 lower,vocabulary_size)
 
     # Create a dictionary and a mapping for tags

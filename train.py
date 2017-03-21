@@ -14,11 +14,15 @@ from utils import evaluate
 
 optparser = optparse.OptionParser()
 optparser.add_option(
-    "-T", "--train", default="data/eng.train",
+    "-T", "--train", default="data/conll2000.train.txt",
     help="Train set location"
 )
 optparser.add_option(
-    "-D", "--dev", default="data/eng.testa",
+    "-D", "--dev", default="data/conll2000.test.txt",
+    help="Development dataset"
+)
+optparser.add_option(
+    "-t", "--test", default="data/eng.testb",
     help="Development dataset"
 )
 optparser.add_option(
@@ -29,10 +33,10 @@ optparser.add_option(
     "-z", "--zeros", default="0",
     type='int', help="Replace digits with 0"
 )
-optparser.add_option(
-    "-p", "--pre_emb", default="",
-    help="Location of pretrained embeddings"
-)
+#optparser.add_option(
+#    "-p", "--pre_emb", default="",
+#    help="Location of pretrained embeddings"
+#)
 optparser.add_option(
     "-s", "--save_emb", default="embedding/temp",
     help="Location of pretrained embeddings"
@@ -55,18 +59,20 @@ opts = optparser.parse_args()[0]
 Parse_parameters = OrderedDict()
 Parse_parameters['lower'] = opts.lower == 1
 Parse_parameters['zeros'] = opts.zeros == 1
-Parse_parameters['pre_emb'] = opts.pre_emb
+#Parse_parameters['pre_emb'] = opts.pre_emb
 Parse_parameters['save_emb'] = opts.save_emb
 Parse_parameters['train'] = opts.train
 Parse_parameters['vocab_size'] = opts.vocab_size
 
 # Check parameters validity
 assert os.path.isfile(opts.train)
+assert os.path.isfile(opts.dev)
+assert os.path.isfile(opts.test)
 
 # load datasets
 train_data, tagset_size, dictionaries = load_train_step_datasets(Parse_parameters)
 dev_data = load_test_step_datasets(Parse_parameters, opts.dev, dictionaries)
-
+#test_data = load_test_step_datasets(Parse_parameters, opts.test, dictionaries)
 
 #embedding_dim, hidden_dim, vocab_size, tagset_size
 # Model parameters
@@ -85,6 +91,8 @@ n_epochs = 1  # number of epochs over the training set
 freq_eval = 1  # evaluate on dev every freq_eval steps
 count = 0
 
+evaluate(model, dev_data, dictionaries)
+'''
 for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it is toy data
 		epoch_costs = []
 		print("Starting epoch %i..." % (epoch))
@@ -110,9 +118,8 @@ for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it
 
 				#Evaluate on development set and test set
 				if count % freq_eval == 0:
-							dev_score = evaluate(parameters, f_eval, dev_sentences,
-                        dev_data, id_to_tag, dico_tags)
+							dev_score = evaluate(model, dev_sentences, dictionaries)
 				
 		print("Epoch %i, cost average: %f" % (epoch, np.mean(epoch_costs)))
-
+'''
 print("haha")
