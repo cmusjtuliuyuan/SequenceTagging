@@ -43,7 +43,7 @@ optparser.add_option(
     help="Location of pretrained embeddings"
 )
 optparser.add_option(
-    "-v", "--vocab_size", default="2000",
+    "-v", "--vocab_size", default="8000",
     type='int', help="vocab_size"
 )
 optparser.add_option(
@@ -86,10 +86,10 @@ Model_parameters['tagset_size'] = tagset_size
 
 model = model.LSTMTagger(Model_parameters)
 loss_function = nn.NLLLoss()
-optimizer = optim.SGD(model.parameters(), lr=0.1)
+optimizer = optim.Adam(model.parameters(), lr=0.01)
 
-n_epochs = 10  # number of epochs over the training set
-count = 0
+n_epochs = 100 # number of epochs over the training set
+
 
 evaluate(model, dev_data, dictionaries)
 accuracys = []
@@ -101,6 +101,15 @@ FB1s =[]
 for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it is toy data
 		epoch_costs = []
 		print("Starting epoch %i..." % (epoch))
+
+		# evaluation 
+		eval_result = evaluate(model, dev_data, dictionaries)
+		print("Epoch %i, cost average: %f" % (epoch, np.mean(epoch_costs)))
+		accuracys.append(eval_result['accuracy'])
+		precisions.append(eval_result['precision'])
+		recalls.append(eval_result['recall'])
+		FB1s.append(eval_result['FB1']
+		# begin to train
 		for i, index in enumerate(np.random.permutation(len(train_data))):
 				# Step 1. Remember that Pytorch accumulates gradients.  We need to clear them out
 				# before each instance
@@ -124,17 +133,20 @@ for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it
 				#if i%100 == 0:
 				#	print("Interation:"+str(i))
 				
-		print("Epoch %i, cost average: %f" % (epoch, np.mean(epoch_costs)))
-		eval_result = evaluate(model, dev_data, dictionaries)
-		accuracys.append(eval_result['accuracy'])
-		precisions.append(eval_result['precision'])
-		recalls.append(eval_result['recall'])
-		FB1s.append(eval_result['FB1'])
+
 
 
 print("Plot final result")
-fig = plt.figure()
+plt.figure()
+plt.plot(accuracys,"g-",label="accuracy")
+plt.plot(precisions,"r-.",label="precision")
+plt.plot(recalls,"m-.",label="recalls")
+plt.plot(FB1s,"k-.",label="FB1s")
 
+plt.xlabel("epoches")
+plt.ylabel("%")
+plt.title("CONLL2000 dataset")
 
-
+plt.grid(True)
+plt.legend()
 plt.show()
