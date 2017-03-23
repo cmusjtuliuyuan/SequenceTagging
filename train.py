@@ -91,7 +91,6 @@ optimizer = optim.Adam(model.parameters(), lr=0.01)
 n_epochs = 100 # number of epochs over the training set
 
 
-evaluate(model, dev_data, dictionaries)
 accuracys = []
 precisions = []
 recalls = []
@@ -100,16 +99,15 @@ FB1s =[]
 
 for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it is toy data
 		epoch_costs = []
-		print("Starting epoch %i..." % (epoch))
 
-		# evaluation 
+		# evaluate
 		eval_result = evaluate(model, dev_data, dictionaries)
-		print("Epoch %i, cost average: %f" % (epoch, np.mean(epoch_costs)))
 		accuracys.append(eval_result['accuracy'])
 		precisions.append(eval_result['precision'])
 		recalls.append(eval_result['recall'])
-		FB1s.append(eval_result['FB1']
-		# begin to train
+		FB1s.append(eval_result['FB1'])
+
+		print("Starting epoch %i..." % (epoch))
 		for i, index in enumerate(np.random.permutation(len(train_data))):
 				# Step 1. Remember that Pytorch accumulates gradients.  We need to clear them out
 				# before each instance
@@ -133,7 +131,7 @@ for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it
 				#if i%100 == 0:
 				#	print("Interation:"+str(i))
 				
-
+		print("Epoch %i, cost average: %f" % (epoch, np.mean(epoch_costs)))
 
 
 print("Plot final result")
