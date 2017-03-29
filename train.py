@@ -2,7 +2,7 @@ import optparse
 import os
 from collections import OrderedDict
 from loader import load_train_step_datasets, load_test_step_datasets
-import model
+import LstmModel
 import torch
 import torch.autograd as autograd
 import torch.nn as nn
@@ -84,7 +84,7 @@ Model_parameters['hidden_dim'] = opts.hidden_dim
 Model_parameters['tagset_size'] = tagset_size
 
 
-model = model.LSTMTagger(Model_parameters)
+model = LstmModel.LSTMTagger(Model_parameters)
 loss_function = nn.NLLLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.01)
 
