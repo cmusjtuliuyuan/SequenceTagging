@@ -50,10 +50,9 @@ def evaluate(model, sentences, dictionaries):
             sentence_in = autograd.Variable(torch.LongTensor(sentences[index]['words']))
 
             #calculate the tag score
-            tag_scores = model(sentence_in).data.numpy()
 
+            tags = model(sentence_in).data.numpy().reshape((-1,))
             # get predict tags
-            tags = np.argmax(tag_scores, axis=1)
             predict_tags = [dictionaries['id_to_tag'][tag] for tag in tags]
 
             # get true tags

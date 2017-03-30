@@ -119,11 +119,12 @@ for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it
 				targets = autograd.Variable(torch.LongTensor(train_data[index]['tags']))
 
 				# Step 3. Run our forward pass.
-				tag_scores = model(sentence_in)
+				#tag_scores = model(sentence_in)
 
 				# Step 4. Compute the loss, gradients, and update the parameters by calling
 				# optimizer.step()
-				loss = loss_function(tag_scores, targets)
+				#loss = loss_function(tag_scores, targets)
+				loss = model.get_loss(sentence_in, targets)
 				epoch_costs.append(loss.data.numpy())
 				loss.backward()
 				optimizer.step()
