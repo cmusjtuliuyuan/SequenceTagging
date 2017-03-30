@@ -30,19 +30,20 @@ class LSTMTagger(nn.Module):
         return (autograd.Variable(torch.Tensor(1, 1, self.hidden_dim)),
                 autograd.Variable(torch.Tensor(1, 1, self.hidden_dim)))
 
-    def get_tag_scores(self, sentence):
+    def forward(self, sentence):
         embeds = self.word_embeddings(sentence)
         lstm_out, self.hidden = self.lstm(embeds.view(len(sentence), 1, -1))
         tag_space = self.hidden2tag(lstm_out.view(len(sentence), -1))
         tag_scores = F.log_softmax(tag_space)
         return tag_scores
 
-    def forward(self, sentence):
-        tag_scores = self.get_tag_scores(sentence)
+    def get_tags(self, sentence):
+        tag_scores = self.forward(sentence)
         _, tags = torch.max(tag_scores, dim=1)
+        tags = tags.data.numpy().reshape((-1,))
         return tags
 
     def get_loss(self, sentence, tags):
-        tag_scores = self.get_tag_scores(sentence)
+        tag_scores = self.forward(sentence)
         loss = self.loss_function(tag_scores, tags)
         return loss 

@@ -51,7 +51,7 @@ def evaluate(model, sentences, dictionaries):
 
             #calculate the tag score
 
-            tags = model(sentence_in).data.numpy().reshape((-1,))
+            tags = model.get_tags(sentence_in)
             # get predict tags
             predict_tags = [dictionaries['id_to_tag'][tag] for tag in tags]
 
