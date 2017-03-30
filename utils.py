@@ -53,7 +53,7 @@ def evaluate(model, sentences, dictionaries):
 
             tags = model.get_tags(sentence_in)
             # get predict tags
-            predict_tags = [dictionaries['id_to_tag'][tag] for tag in tags]
+            predict_tags = [dictionaries['id_to_tag'][tag] if (tag in dictionaries['id_to_tag']) else 'START_STOP' for tag in tags]
 
             # get true tags
             true_tags = [dictionaries['id_to_tag'][tag] for tag in sentences[index]['tags']]

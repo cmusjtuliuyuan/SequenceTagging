@@ -3,6 +3,7 @@ import os
 from collections import OrderedDict
 from loader import load_train_step_datasets, load_test_step_datasets
 import LstmModel
+import LstmCrfModel
 import torch
 import torch.autograd as autograd
 import torch.nn as nn
@@ -84,11 +85,11 @@ Model_parameters['hidden_dim'] = opts.hidden_dim
 Model_parameters['tagset_size'] = tagset_size
 
 
-model = LstmModel.LSTMTagger(Model_parameters)
-loss_function = nn.NLLLoss()
+#model = LstmModel.LSTMTagger(Model_parameters)
+model = LstmCrfModel.BiLSTM_CRF(Model_parameters)
 optimizer = optim.Adam(model.parameters(), lr=0.01)
 
-n_epochs = 100 # number of epochs over the training set
+n_epochs = 10 # number of epochs over the training set
 
 
 accuracys = []
@@ -108,7 +109,7 @@ for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it
 		FB1s.append(eval_result['FB1'])
 
 		print("Starting epoch %i..." % (epoch))
-		for i, index in enumerate(np.random.permutation(len(train_data))):
+		for i, index in enumerate(np.random.permutation(100)):
 				# Step 1. Remember that Pytorch accumulates gradients.  We need to clear them out
 				# before each instance
 				model.zero_grad()
