@@ -15,6 +15,13 @@ Test this model on CONLL2000, the result shown in below:
 
 The CRF-LSTM model part is done.
 
+Test this model on CONLL2000, the result shown in below:
+
+![image](https://github.com/cmusjtuliuyuan/SequenceTagging/blob/master/CRFLSTM.png)
+
+I am doing the pre-training part now....
+After pre-training, I will calculate the derivation by hand to speed up...
+
 Some of the code is from https://github.com/glample/tagger
 I want to make the structure of my code is similar with /glample/tagger as much as possible.
 
