@@ -11,7 +11,7 @@ LSTM in PyTorch training part is done.
 Evaluation part is done.
 
 Test this model on CONLL2000, the result shown in below:
-![image](https://github.com/cmusjtuliuyuan/SequenceTagging/blob/master/CONLL2000.png)
+![image](https://github.com/cmusjtuliuyuan/SequenceTagging/blob/master/LSTM.png)
 
 The CRF-LSTM model part is done.
 

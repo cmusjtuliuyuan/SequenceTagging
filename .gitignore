@@ -1,3 +1,4 @@
 data/*
 embedding/*
+tmp/*.txt
 *.pyc
