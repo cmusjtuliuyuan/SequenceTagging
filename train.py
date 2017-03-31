@@ -109,7 +109,7 @@ for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it
 		FB1s.append(eval_result['FB1'])
 
 		print("Starting epoch %i..." % (epoch))
-		for i, index in enumerate(np.random.permutation(100)):
+		for i, index in enumerate(np.random.permutation(len(train_data))):
 				# Step 1. Remember that Pytorch accumulates gradients.  We need to clear them out
 				# before each instance
 				model.zero_grad()
