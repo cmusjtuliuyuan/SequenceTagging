@@ -9,10 +9,9 @@ import torch.autograd as autograd
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from utils import evaluate
-import matplotlib.pyplot as plt
+from utils import evaluate, plot_result
 
-#TO DO add Dictionary size
+
 
 optparser = optparse.OptionParser()
 optparser.add_option(
@@ -32,11 +31,7 @@ optparser.add_option(
     type='int', help="Replace digits with 0"
 )
 optparser.add_option(
-    "-p", "--pre_emb", default='embedding/glove.6B.100d.txt',
-    help="Location of pretrained embeddings"
-)
-optparser.add_option(
-    "-s", "--save_emb", default="embedding/temp",
+    "-p", "--pre_emb", default=None,
     help="Location of pretrained embeddings"
 )
 optparser.add_option(
@@ -136,18 +131,13 @@ for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it
 			
     print("Epoch %i, cost average: %f" % (epoch, np.mean(epoch_costs)))
 
+# Final Evaluation after training
+eval_result = evaluate(model, dev_data, dictionaries)
+accuracys.append(eval_result['accuracy'])
+precisions.append(eval_result['precision'])
+recalls.append(eval_result['recall'])
+FB1s.append(eval_result['FB1'])
+
 
 print("Plot final result")
-plt.figure()
-plt.plot(accuracys,"g-",label="accuracy")
-plt.plot(precisions,"r-.",label="precision")
-plt.plot(recalls,"m-.",label="recalls")
-plt.plot(FB1s,"k-.",label="FB1s")
-
-plt.xlabel("epoches")
-plt.ylabel("%")
-plt.title("CONLL2000 dataset")
-
-plt.grid(True)
-plt.legend()
-plt.show()
+plot_result(accuracys, precisions, recalls, FB1s)

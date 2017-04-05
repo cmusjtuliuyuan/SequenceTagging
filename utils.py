@@ -5,6 +5,7 @@ import torch
 import torch.autograd as autograd
 import codecs
 import numpy as np
+import matplotlib.pyplot as plt
 
 def create_dico(item_list):
     """
@@ -89,4 +90,18 @@ def evaluate(model, sentences, dictionaries):
     }
     print(eval_lines[1])
     return result
-    
+
+def plot_result():
+    plt.figure()
+    plt.plot(accuracys,"g-",label="accuracy")
+    plt.plot(precisions,"r-.",label="precision")
+    plt.plot(recalls,"m-.",label="recalls")
+    plt.plot(FB1s,"k-.",label="FB1s")
+
+    plt.xlabel("epoches")
+    plt.ylabel("%")
+    plt.title("CONLL2000 dataset")
+
+    plt.grid(True)
+    plt.legend()
+    plt.show()
