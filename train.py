@@ -35,10 +35,10 @@ optparser.add_option(
     "-z", "--zeros", default="0",
     type='int', help="Replace digits with 0"
 )
-#optparser.add_option(
-#    "-p", "--pre_emb", default="",
-#    help="Location of pretrained embeddings"
-#)
+optparser.add_option(
+    "-p", "--pre_emb", default=None,
+    help="Location of pretrained embeddings"
+)
 optparser.add_option(
     "-s", "--save_emb", default="embedding/temp",
     help="Location of pretrained embeddings"
@@ -61,8 +61,9 @@ opts = optparser.parse_args()[0]
 Parse_parameters = OrderedDict()
 Parse_parameters['lower'] = opts.lower == 1
 Parse_parameters['zeros'] = opts.zeros == 1
-#Parse_parameters['pre_emb'] = opts.pre_emb
+Parse_parameters['pre_emb'] = opts.pre_emb
 Parse_parameters['train'] = opts.train
+Parse_parameters['development'] = opts.dev
 Parse_parameters['vocab_size'] = opts.vocab_size
 
 # Check parameters validity

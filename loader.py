@@ -153,7 +153,7 @@ def prepare_dictionaries(parameters):
     lower = parameters['lower']
     zeros = parameters['zeros']
     train_path = parameters['train']
-
+    dev_path = parameters['development']
     vocabulary_size = parameters['vocab_size']
 
     # Load sentences
@@ -161,7 +161,13 @@ def prepare_dictionaries(parameters):
     # Use selected tagging scheme
     check_tag_chunking(train_sentences)
 
-    dico_words, word_to_id, id_to_word = word_mapping(train_sentences, 
+    if parameters['pre_emb']:
+        dev_sentences = load_sentences(dev_path, lower, zeros)
+        sentences = train_sentences + dev_sentences
+        dico_words, word_to_id, id_to_word = word_mapping(sentences, 
+                                                lower,vocabulary_size)
+    else:
+        dico_words, word_to_id, id_to_word = word_mapping(train_sentences, 
                                                 lower,vocabulary_size)
     dico_tags, tag_to_id, id_to_tag = tag_mapping(train_sentences)
 
@@ -187,70 +193,3 @@ def load_dataset(parameters, path, dictionaries):
     print("%i sentences in %s ."%(len(dataset), path))
     return dataset
 
-
-def load_train_step_datasets(parameters):
-    # Data parameters
-    lower = parameters['lower']
-    zeros = parameters['zeros']
-    train_path = parameters['train']
-    vocabulary_size = parameters['vocab_size']
-
-    # Load sentences
-    train_sentences = load_sentences(train_path, lower, zeros)
-
-    # Use selected tagging scheme
-    check_tag_chunking(train_sentences)
-
-    # Create a dictionary / mapping of words
-    # If we use pretrained embeddings, we add them to the dictionary.
-    '''
-    if parameters['pre_emb']:
-        dico_words_train = word_mapping(train_sentences, lower, vocabulary_size)[0]
-        dico_words, word_to_id, id_to_word = augment_with_pretrained(
-            dico_words_train.copy(),
-            parameters['pre_emb'],
-            list(itertools.chain.from_iterable(
-                [[w[0] for w in s] for s in dev_sentences + test_sentences])
-            ) if not parameters['all_emb'] else None
-        )
-    else:
-        #{word: number}
-    '''
-    dico_words, word_to_id, id_to_word = word_mapping(train_sentences, 
-                                                lower,vocabulary_size)
-
-    # Create a dictionary and a mapping for tags
-    dico_tags, tag_to_id, id_to_tag = tag_mapping(train_sentences)
-
-    # index data
-    train_data = prepare_dataset(
-        train_sentences, word_to_id, tag_to_id, lower
-    )
-
-    print("%i sentences in train ."%(len(train_data)))
-
-    # Save the mappings to disk
-    print('Saving the mappings to disk...')
-    save_mappings(id_to_word, id_to_tag, parameters['save_emb'])
-
-    dictionaries = {
-        'word_to_id': word_to_id,
-        'id_to_word': id_to_word,
-        'tag_to_id': tag_to_id,
-        'id_to_tag': id_to_tag,
-    }
-
-    return train_data, len(tag_to_id), dictionaries
-
-def load_test_step_datasets(parameters, test_path, dictionaries):
-    # Data parameters
-    lower = parameters['lower']
-    zeros = parameters['zeros']
-    vocabulary_size = parameters['vocab_size']
-
-    # Load sentences
-    test_sentences = load_sentences(test_path, lower, zeros)
-    test_data = prepare_dataset(
-        test_sentences, dictionaries['word_to_id'], dictionaries['tag_to_id'], lower
-    )
-    return test_data
