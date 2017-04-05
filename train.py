@@ -23,10 +23,6 @@ optparser.add_option(
     "-D", "--dev", default="data/conll2000.test.txt",
     help="Development dataset"
 )
-#optparser.add_option(
-#    "-t", "--test", default="data/eng.testb",
-#    help="Development dataset"
-#)
 optparser.add_option(
     "-l", "--lower", default="0",
     type='int', help="Lowercase words (this will not affect character inputs)"
@@ -69,7 +65,8 @@ Parse_parameters['vocab_size'] = opts.vocab_size
 # Check parameters validity
 assert os.path.isfile(opts.train)
 assert os.path.isfile(opts.dev)
-#assert os.path.isfile(opts.test)
+if opts.pre_emb:
+    assert opts.embedding_dim in [50, 100, 200, 300]
 
 # load datasets
 dictionaries = prepare_dictionaries(Parse_parameters)
@@ -79,7 +76,6 @@ train_data = load_dataset(Parse_parameters, opts.train, dictionaries)
 dev_data = load_dataset(Parse_parameters, opts.dev, dictionaries)
 
 
-#embedding_dim, hidden_dim, vocab_size, tagset_size
 # Model parameters
 Model_parameters = OrderedDict()
 Model_parameters['vocab_size'] = opts.vocab_size
@@ -102,41 +98,36 @@ FB1s =[]
 
 
 for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it is toy data
-		epoch_costs = []
+    epoch_costs = []
 
-		# evaluate
-		eval_result = evaluate(model, dev_data, dictionaries)
-		accuracys.append(eval_result['accuracy'])
-		precisions.append(eval_result['precision'])
-		recalls.append(eval_result['recall'])
-		FB1s.append(eval_result['FB1'])
+    # evaluate
+    eval_result = evaluate(model, dev_data, dictionaries)
+    accuracys.append(eval_result['accuracy'])
+    precisions.append(eval_result['precision'])
+    recalls.append(eval_result['recall'])
+    FB1s.append(eval_result['FB1'])
 
-		print("Starting epoch %i..." % (epoch))
-		for i, index in enumerate(np.random.permutation(len(train_data))):
-				# Step 1. Remember that Pytorch accumulates gradients.  We need to clear them out
-				# before each instance
-				model.zero_grad()
-    
-				# Step 2. Get our inputs ready for the network, that is, turn them into Variables
-				# of word indices.
-				sentence_in = autograd.Variable(torch.LongTensor(train_data[index]['words']))
-				targets = autograd.Variable(torch.LongTensor(train_data[index]['tags']))
+    print("Starting epoch %i..." % (epoch))
+    for i, index in enumerate(np.random.permutation(len(train_data))):
+        # Step 1. Remember that Pytorch accumulates gradients.  We need to clear them out
+        # before each instance
+        model.zero_grad()
 
-				# Step 3. Run our forward pass.
-				#tag_scores = model(sentence_in)
+        # Step 2. Get our inputs ready for the network, that is, turn them into Variables
+        # of word indices.
+        sentence_in = autograd.Variable(torch.LongTensor(train_data[index]['words']))
+        targets = autograd.Variable(torch.LongTensor(train_data[index]['tags']))
 
-				# Step 4. Compute the loss, gradients, and update the parameters by calling
-				# optimizer.step()
-				#loss = loss_function(tag_scores, targets)
-				loss = model.get_loss(sentence_in, targets)
-				epoch_costs.append(loss.data.numpy())
-				loss.backward()
-				optimizer.step()
+        # Step 3. Run our forward pass. We combine this step with get_loss function
+        #tag_scores = model(sentence_in)
 
-				#if i%100 == 0:
-				#	print("Interation:"+str(i))
-				
-		print("Epoch %i, cost average: %f" % (epoch, np.mean(epoch_costs)))
+        # Step 4. Compute the loss, gradients, and update the parameters by calling
+        oss = model.get_loss(sentence_in, targets)
+        epoch_costs.append(loss.data.numpy())
+        loss.backward()
+        optimizer.step()
+			
+    print("Epoch %i, cost average: %f" % (epoch, np.mean(epoch_costs)))
 
 
 print("Plot final result")
