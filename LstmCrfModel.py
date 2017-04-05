@@ -46,7 +46,7 @@ class BiLSTM_CRF(nn.Module):
         self.hidden = self.init_hidden()
 
     def init_word_embedding(self, init_matrix):
-        self.word_embeddings.weight=nn.Parameter(torch.FloatTensor(init_matrix))
+        self.word_embeds.weight=nn.Parameter(torch.FloatTensor(init_matrix))
         
     def init_hidden(self):
         return ( autograd.Variable( torch.randn(2, 1, self.hidden_dim)),
