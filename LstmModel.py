@@ -22,7 +22,10 @@ class LSTMTagger(nn.Module):
         self.hidden2tag = nn.Linear(parameter['hidden_dim'], parameter['tagset_size'])
         self.hidden = self.init_hidden()
         self.loss_function = nn.NLLLoss()
-        
+    
+    def init_word_embedding(self, init_matrix):
+        self.word_embeddings.weight=nn.Parameter(torch.FloatTensor(init_matrix))
+
     def init_hidden(self):
         # Before we've done anything, we dont have any hidden state.
         # Refer to the Pytorch documentation to see exactly why they have this dimensionality.

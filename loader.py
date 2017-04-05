@@ -3,7 +3,7 @@ import re
 import codecs
 from utils import create_dico, create_mapping, zero_digits
 from utils import read_pre_training
-import cPickle
+import numpy as np
 
 def load_sentences(path, lower, zeros):
     """
@@ -164,3 +164,11 @@ def load_dataset(parameters, path, dictionaries):
     print("%i sentences in %s ."%(len(dataset), path))
     return dataset
 
+def get_word_embedding_matrix(dictionary, pre_train, embedding_dim):
+    emb_dictionary = read_pre_training(pre_train)
+    dic_size = len(dictionary)
+    initial_matrix = np.random.random(size=(dic_size, embedding_dim))
+    for word, idx in dictionary.iteritems(): 
+        if word != '<UNK>':
+            initial_matrix[idx] = emb_dictionary[word]
+    return initial_matrix

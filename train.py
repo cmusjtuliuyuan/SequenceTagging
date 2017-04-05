@@ -1,7 +1,7 @@
 import optparse
 import os
 from collections import OrderedDict
-from loader import prepare_dictionaries, load_dataset
+from loader import prepare_dictionaries, load_dataset, get_word_embedding_matrix
 import LstmModel
 import LstmCrfModel
 import torch
@@ -32,7 +32,7 @@ optparser.add_option(
     type='int', help="Replace digits with 0"
 )
 optparser.add_option(
-    "-p", "--pre_emb", default='embedding/glove.6B.50d.txt',
+    "-p", "--pre_emb", default='embedding/glove.6B.100d.txt',
     help="Location of pretrained embeddings"
 )
 optparser.add_option(
@@ -44,7 +44,7 @@ optparser.add_option(
     type='int', help="vocab_size"
 )
 optparser.add_option(
-    "-e", "--embedding_dim", default="50",
+    "-e", "--embedding_dim", default="100",
     type='int', help="words hidden dimension"
 )
 optparser.add_option(
@@ -89,8 +89,14 @@ Model_parameters['tagset_size'] = tagset_size
 model = LstmCrfModel.BiLSTM_CRF(Model_parameters)
 optimizer = optim.Adam(model.parameters(), lr=0.01)
 
-n_epochs = 10 # number of epochs over the training set
+# If using pre-train, we need to initialize word-embedding layer
+if opts.pre_emb:
+	  print("Initialize the word-embedding layer")
+	  initial_matrix = get_word_embedding_matrix(dictionaries['word_to_id'], 
+	  					  opts.pre_emb, opts.embedding_dim)
+	  model.init_word_embedding(initial_matrix)
 
+n_epochs = 10 # number of epochs over the training set
 
 accuracys = []
 precisions = []
