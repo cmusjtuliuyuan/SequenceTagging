@@ -5,7 +5,7 @@ from utils import create_dico, create_mapping, zero_digits
 from utils import read_pre_training
 import numpy as np
 
-def load_sentences(path, lower, zeros):
+def load_sentences(path, zeros):
     """
     Load sentences. A line must contain at least a word and its tag.
     Sentences are separated by empty lines.
@@ -128,12 +128,12 @@ def prepare_dictionaries(parameters):
     vocabulary_size = parameters['vocab_size']
 
     # Load sentences
-    train_sentences = load_sentences(train_path, lower, zeros)
+    train_sentences = load_sentences(train_path, zeros)
     # Use selected tagging scheme
     check_tag_chunking(train_sentences)
 
     if parameters['pre_emb']:
-        dev_sentences = load_sentences(dev_path, lower, zeros)
+        dev_sentences = load_sentences(dev_path,  zeros)
         sentences = train_sentences + dev_sentences
         dico_words, word_to_id, id_to_word = word_mapping(sentences, 
                                    lower,vocabulary_size, parameters['pre_emb'])
@@ -157,7 +157,7 @@ def load_dataset(parameters, path, dictionaries):
     zeros = parameters['zeros']
 
     # Load sentences
-    sentences = load_sentences(path, lower, zeros)
+    sentences = load_sentences(path, zeros)
     dataset = prepare_dataset(
         sentences, dictionaries['word_to_id'], dictionaries['tag_to_id'], lower
     )
