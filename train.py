@@ -24,15 +24,15 @@ optparser.add_option(
     help="Development dataset"
 )
 optparser.add_option(
-    "-l", "--lower", default="0",
+    "-l", "--lower", default="1",
     type='int', help="Lowercase words (this will not affect character inputs)"
 )
 optparser.add_option(
-    "-z", "--zeros", default="0",
+    "-z", "--zeros", default="1",
     type='int', help="Replace digits with 0"
 )
 optparser.add_option(
-    "-p", "--pre_emb", default=None,
+    "-p", "--pre_emb", default='embedding/glove.6B.50d.txt',
     help="Location of pretrained embeddings"
 )
 optparser.add_option(
@@ -44,7 +44,7 @@ optparser.add_option(
     type='int', help="vocab_size"
 )
 optparser.add_option(
-    "-e", "--embedding_dim", default="100",
+    "-e", "--embedding_dim", default="50",
     type='int', help="words hidden dimension"
 )
 optparser.add_option(
@@ -67,6 +67,7 @@ assert os.path.isfile(opts.train)
 assert os.path.isfile(opts.dev)
 if opts.pre_emb:
     assert opts.embedding_dim in [50, 100, 200, 300]
+    assert opts.lower == 1
 
 # load datasets
 dictionaries = prepare_dictionaries(Parse_parameters)
@@ -122,7 +123,7 @@ for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it
         #tag_scores = model(sentence_in)
 
         # Step 4. Compute the loss, gradients, and update the parameters by calling
-        oss = model.get_loss(sentence_in, targets)
+        loss = model.get_loss(sentence_in, targets)
         epoch_costs.append(loss.data.numpy())
         loss.backward()
         optimizer.step()

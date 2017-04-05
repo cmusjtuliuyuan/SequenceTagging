@@ -2,6 +2,7 @@ import os
 import re
 import codecs
 from utils import create_dico, create_mapping, zero_digits
+from utils import read_pre_training
 import cPickle
 
 def load_sentences(path, lower, zeros):
@@ -45,17 +46,25 @@ def check_tag_chunking(sentences):
 
 
 
-def word_mapping(sentences, lower,vocabulary_size):
+def word_mapping(sentences, lower,vocabulary_size, pre_train = None):
     """
     Create a dictionary and a mapping of words, sorted by frequency.
     """
     words = [[x[0].lower() if lower else x[0] for x in s] for s in sentences]
     dico = create_dico(words)
-    dico['<UNK>'] = 10000000
     word_to_id, id_to_word = create_mapping(dico, vocabulary_size)
     print ("Found %i unique words (%i in total)" % 
         (len(dico), sum(len(x) for x in words))
     )
+
+    if pre_train:
+        emb_dictionary = read_pre_training(pre_train)
+        for word in dico.iterkeys():
+        	  if word not in emb_dictionary:
+        	  	  dico[word]=0
+        	  	  
+    dico['<UNK>'] = 10000000
+    word_to_id, id_to_word = create_mapping(dico, vocabulary_size)
     return dico, word_to_id, id_to_word
 
 
@@ -111,44 +120,6 @@ def prepare_dataset(sentences, word_to_id, tag_to_id, lower=False):
         })
     return data
 
-
-def augment_with_pretrained(dictionary, ext_emb_path, words):
-    """
-    Augment the dictionary with words that have a pretrained embedding.
-    If `words` is None, we add every word that has a pretrained embedding
-    to the dictionary, otherwise, we only add the words that are given by
-    `words` (typically the words in the development and test sets.)
-    """
-    print('Loading pretrained embeddings from %s...' % (ext_emb_path))
-    assert os.path.isfile(ext_emb_path)
-
-    # Load pretrained embeddings from file
-    pretrained = set([
-        line.rstrip().split()[0].strip()
-        for line in codecs.open(ext_emb_path, 'r', 'utf-8')
-        if len(ext_emb_path) > 0
-    ])
-
-    # We either add every word in the pretrained file,
-    # or only words given in the `words` list to which
-    # we can assign a pretrained embedding
-    if words is None:
-        for word in pretrained:
-            if word not in dictionary:
-                dictionary[word] = 0
-    else:
-        for word in words:
-            if any(x in pretrained for x in [
-                word,
-                word.lower(),
-                re.sub('\d', '0', word.lower())
-            ]) and word not in dictionary:
-                dictionary[word] = 0
-
-    word_to_id, id_to_word = create_mapping(dictionary)
-    return dictionary, word_to_id, id_to_word
-
-
 def prepare_dictionaries(parameters):
     lower = parameters['lower']
     zeros = parameters['zeros']
@@ -165,10 +136,10 @@ def prepare_dictionaries(parameters):
         dev_sentences = load_sentences(dev_path, lower, zeros)
         sentences = train_sentences + dev_sentences
         dico_words, word_to_id, id_to_word = word_mapping(sentences, 
-                                                lower,vocabulary_size)
+                                   lower,vocabulary_size, parameters['pre_emb'])
     else:
         dico_words, word_to_id, id_to_word = word_mapping(train_sentences, 
-                                                lower,vocabulary_size)
+                                    lower,vocabulary_size, parameters['pre_emb'])
     dico_tags, tag_to_id, id_to_tag = tag_mapping(train_sentences)
 
     dictionaries = {

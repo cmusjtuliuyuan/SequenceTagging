@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.autograd as autograd
 import codecs
-
+import numpy as np
 
 def create_dico(item_list):
     """
@@ -30,6 +30,20 @@ def create_mapping(dico, vocabulary_size=2000):
     id_to_item = {i: v[0] for i, v in enumerate(sorted_items)}
     item_to_id = {v: k for k, v in id_to_item.items()}
     return item_to_id, id_to_item
+
+def read_pre_training(emb_path):
+    """
+    Read pre-train word embeding
+    The detail of this dataset can be found in the following link
+    https://nlp.stanford.edu/projects/glove/ 
+    """
+    print('Preparing pre-train dictionary')
+    emb_dictionary={}
+    for line in codecs.open(emb_path, 'r', 'utf-8'):
+        temp = line.split()
+        emb_dictionary[temp[0]] = np.asarray(temp[1:], dtype= np.float16)
+    return emb_dictionary
+
 
 def zero_digits(s):
     """
