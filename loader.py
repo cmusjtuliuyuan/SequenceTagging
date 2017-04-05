@@ -69,19 +69,6 @@ def tag_mapping(sentences):
     print("Found %i unique named entity tags" % (len(dico)))
     return dico, tag_to_id, id_to_tag
 
-
-def save_mappings(id_to_word, id_to_tag, mappings_path):
-        """
-        We need to save the mappings if we want to use the model later.
-        """
-        with open(mappings_path, 'wb') as f:
-            mappings = {
-                'id_to_word': id_to_word,
-                'id_to_tag': id_to_tag,
-            }
-            cPickle.dump(mappings, f)
-
-
 def cap_feature(s):
     """
     Capitalization feature:
@@ -160,6 +147,45 @@ def augment_with_pretrained(dictionary, ext_emb_path, words):
 
     word_to_id, id_to_word = create_mapping(dictionary)
     return dictionary, word_to_id, id_to_word
+
+
+def prepare_dictionaries(parameters):
+    lower = parameters['lower']
+    zeros = parameters['zeros']
+    train_path = parameters['train']
+
+    vocabulary_size = parameters['vocab_size']
+
+    # Load sentences
+    train_sentences = load_sentences(train_path, lower, zeros)
+    # Use selected tagging scheme
+    check_tag_chunking(train_sentences)
+
+    dico_words, word_to_id, id_to_word = word_mapping(train_sentences, 
+                                                lower,vocabulary_size)
+    dico_tags, tag_to_id, id_to_tag = tag_mapping(train_sentences)
+
+    dictionaries = {
+        'word_to_id': word_to_id,
+        'id_to_word': id_to_word,
+        'tag_to_id': tag_to_id,
+        'id_to_tag': id_to_tag,
+    }
+
+    return dictionaries
+
+def load_dataset(parameters, path, dictionaries):
+    # Data parameters
+    lower = parameters['lower']
+    zeros = parameters['zeros']
+
+    # Load sentences
+    sentences = load_sentences(path, lower, zeros)
+    dataset = prepare_dataset(
+        sentences, dictionaries['word_to_id'], dictionaries['tag_to_id'], lower
+    )
+    print("%i sentences in %s ."%(len(dataset), path))
+    return dataset
 
 
 def load_train_step_datasets(parameters):

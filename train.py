@@ -1,7 +1,7 @@
 import optparse
 import os
 from collections import OrderedDict
-from loader import load_train_step_datasets, load_test_step_datasets
+from loader import prepare_dictionaries, load_dataset
 import LstmModel
 import LstmCrfModel
 import torch
@@ -62,7 +62,6 @@ Parse_parameters = OrderedDict()
 Parse_parameters['lower'] = opts.lower == 1
 Parse_parameters['zeros'] = opts.zeros == 1
 #Parse_parameters['pre_emb'] = opts.pre_emb
-Parse_parameters['save_emb'] = opts.save_emb
 Parse_parameters['train'] = opts.train
 Parse_parameters['vocab_size'] = opts.vocab_size
 
@@ -72,9 +71,12 @@ assert os.path.isfile(opts.dev)
 #assert os.path.isfile(opts.test)
 
 # load datasets
-train_data, tagset_size, dictionaries = load_train_step_datasets(Parse_parameters)
-dev_data = load_test_step_datasets(Parse_parameters, opts.dev, dictionaries)
-#test_data = load_test_step_datasets(Parse_parameters, opts.test, dictionaries)
+dictionaries = prepare_dictionaries(Parse_parameters)
+tagset_size = len(dictionaries['tag_to_id'])
+
+train_data = load_dataset(Parse_parameters, opts.train, dictionaries)
+dev_data = load_dataset(Parse_parameters, opts.dev, dictionaries)
+
 
 #embedding_dim, hidden_dim, vocab_size, tagset_size
 # Model parameters
