@@ -3,8 +3,10 @@ import torch.autograd as autograd
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+from loader import CAP_DIM
 START_TAG = -2
 STOP_TAG = -1
+
 
 
 # Helper functions to make the code more readable.
@@ -32,8 +34,12 @@ class BiLSTM_CRF(nn.Module):
         self.hidden_dim = parameter['hidden_dim']
         self.vocab_size = parameter['vocab_size']
         self.tagset_size = parameter['tagset_size']
+        self.lower = parameter['lower']
         
         self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim)
+        if self.lower:
+            self.embedding_dim += CAP_DIM
+
         self.lstm = nn.LSTM(self.embedding_dim, self.hidden_dim/2, num_layers=1, bidirectional=True)
         
         # Maps the output of the LSTM into tag space.
@@ -81,10 +87,20 @@ class BiLSTM_CRF(nn.Module):
         alpha = log_sum_exp(terminal_var)
         return alpha
         
-    def _get_lstm_features(self, sentence):
-        embeds = self.word_embeds(sentence).view(len(sentence), 1, -1)
-        lstm_out, self.hidden = self.lstm(embeds)
-        lstm_out = lstm_out.view(len(sentence), self.hidden_dim)
+    def _get_lstm_features(self, **sentence):
+        input_words = sentence['input_words']
+        embeds = self.word_embeds(input_words)
+        if self.lower:
+              # We first need to convert it into on-hot. Then concat it with the word_embedding layer
+            caps = sentence['input_caps']
+            input_caps = torch.FloatTensor(len(caps), CAP_DIM)
+            input_caps.zero_()
+            input_caps.scatter_(1, caps.view(-1,1) ,1)
+            input_caps = autograd.Variable(input_caps)
+            embeds = torch.cat((embeds, input_caps),1)
+
+        lstm_out, self.hidden = self.lstm(embeds.view(len(input_words), 1, -1))
+        lstm_out = lstm_out.view(len(input_words), self.hidden_dim)
         lstm_feats = self.hidden2tag(lstm_out)
         return lstm_feats
         
@@ -143,22 +159,48 @@ class BiLSTM_CRF(nn.Module):
         best_path.reverse()
         return path_score, best_path
 
-    def get_loss(self, sentence, tags):
+    def get_loss(self, tags, **sentence):
+        input_words = sentence['input_words']
+
+        if self.lower:
+            input_caps = sentence['input_caps']
+            feats = self._get_lstm_features(input_words = input_words,
+                                  input_caps = input_caps)
+        else:
+            feats = self._get_lstm_features(input_words = input_words)
+
         # nonegative log likelihood
-        feats = self._get_lstm_features(sentence)
+        #feats = self._get_lstm_features(sentence)
         forward_score = self._forward_alg(feats)
         gold_score = self._score_sentence(feats, tags)
         return forward_score - gold_score
 
-    def forward(self, sentence): # dont confuse this with _forward_alg above.
+    def forward(self, **sentence): # dont confuse this with _forward_alg above.
         # Get the emission scores from the BiLSTM
-        lstm_feats = self._get_lstm_features(sentence)
+        input_words = sentence['input_words']
+
+        if self.lower:
+            input_caps = sentence['input_caps']
+            feats = self._get_lstm_features(input_words = input_words,
+                                  input_caps = input_caps)
+        else:
+            feats = self._get_lstm_features(input_words = input_words)
+        #lstm_feats = self._get_lstm_features(sentence)
         
         # Find the best path, given the features.
-        score, tag_seq = self._viterbi_decode(lstm_feats)
+        score, tag_seq = self._viterbi_decode(feats)
 
         return score, tag_seq
 
-    def get_tags(self, sentence):
-        score, tag_seq = self.forward(sentence)
+    def get_tags(self, **sentence):
+        input_words = sentence['input_words']
+
+        if self.lower:
+            input_caps = sentence['input_caps']
+            _, tag_seq = self.forward(input_words = input_words,
+                                  input_caps = input_caps)
+        else:
+            _, tag_seq  = self.forward(input_words = input_words)
+
+        #score, tag_seq = self.forward(sentence)
         return np.asarray(tag_seq).reshape((-1,))

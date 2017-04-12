@@ -32,7 +32,7 @@ optparser.add_option(
     type='int', help="Replace digits with 0"
 )
 optparser.add_option(
-    "-p", "--pre_emb", default=None,
+    "-p", "--pre_emb", default='embedding/glove.6B.100d.txt',
     help="Location of pretrained embeddings"
 )
 optparser.add_option(
@@ -82,8 +82,8 @@ Model_parameters['tagset_size'] = tagset_size
 Model_parameters['lower'] = opts.lower == 1
 
 
-model = LstmModel.LSTMTagger(Model_parameters)
-#model = LstmCrfModel.BiLSTM_CRF(Model_parameters)
+#model = LstmModel.LSTMTagger(Model_parameters)
+model = LstmCrfModel.BiLSTM_CRF(Model_parameters)
 optimizer = optim.Adam(model.parameters(), lr=0.01)
 
 # If using pre-train, we need to initialize word-embedding layer

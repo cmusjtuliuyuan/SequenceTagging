@@ -16,13 +16,13 @@ class LSTMTagger(nn.Module):
         self.word_embeddings = nn.Embedding(parameter['vocab_size'], 
                                             parameter['embedding_dim'])
 
-        self.input_dim = parameter['embedding_dim']
+        self.embedding_dim = parameter['embedding_dim']
         if self.lower:
-            self.input_dim += CAP_DIM
+            self.embedding_dim += CAP_DIM
         
         # The LSTM takes word embeddings and captical embedding as inputs, and outputs hidden states
         # with dimensionality hidden_dim.
-        self.lstm = nn.LSTM(self.input_dim, parameter['hidden_dim'])
+        self.lstm = nn.LSTM(self.embedding_dim, parameter['hidden_dim'])
         
         # The linear layer that maps from hidden state space to tag space
         self.hidden2tag = nn.Linear(parameter['hidden_dim'], parameter['tagset_size'])
