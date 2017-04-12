@@ -10,6 +10,7 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from utils import evaluate, plot_result
+from loader import CAP_DIM
 
 
 
@@ -78,10 +79,11 @@ Model_parameters['vocab_size'] = opts.vocab_size
 Model_parameters['embedding_dim'] = opts.embedding_dim
 Model_parameters['hidden_dim'] = opts.hidden_dim
 Model_parameters['tagset_size'] = tagset_size
+Model_parameters['lower'] = opts.lower == 1
 
 
-#model = LstmModel.LSTMTagger(Model_parameters)
-model = LstmCrfModel.BiLSTM_CRF(Model_parameters)
+model = LstmModel.LSTMTagger(Model_parameters)
+#model = LstmCrfModel.BiLSTM_CRF(Model_parameters)
 optimizer = optim.Adam(model.parameters(), lr=0.01)
 
 # If using pre-train, we need to initialize word-embedding layer
@@ -103,11 +105,11 @@ for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it
     epoch_costs = []
 
     # evaluate
-    eval_result = evaluate(model, dev_data, dictionaries)
-    accuracys.append(eval_result['accuracy'])
-    precisions.append(eval_result['precision'])
-    recalls.append(eval_result['recall'])
-    FB1s.append(eval_result['FB1'])
+    #eval_result = evaluate(model, dev_data, dictionaries)
+    #accuracys.append(eval_result['accuracy'])
+    #precisions.append(eval_result['precision'])
+    #recalls.append(eval_result['recall'])
+    #FB1s.append(eval_result['FB1'])
 
     print("Starting epoch %i..." % (epoch))
     for i, index in enumerate(np.random.permutation(len(train_data))):
@@ -117,14 +119,24 @@ for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it
 
         # Step 2. Get our inputs ready for the network, that is, turn them into Variables
         # of word indices.
-        sentence_in = autograd.Variable(torch.LongTensor(train_data[index]['words']))
+        input_words = autograd.Variable(torch.LongTensor(train_data[index]['words']))
         targets = autograd.Variable(torch.LongTensor(train_data[index]['tags']))
 
         # Step 3. Run our forward pass. We combine this step with get_loss function
         #tag_scores = model(sentence_in)
 
         # Step 4. Compute the loss, gradients, and update the parameters by calling
-        loss = model.get_loss(sentence_in, targets)
+        # first check whether we use lower this parameter
+        if opts.lower == 1:
+            # We first convert it to one-hot, then input
+            input_caps = torch.FloatTensor(len(train_data[index]['caps']), CAP_DIM)
+            input_caps.zero_()
+            input_caps.scatter_(1, torch.LongTensor(train_data[index]['caps']).view(-1,1) ,1)
+            input_caps = autograd.Variable(input_caps)
+            loss = model.get_loss(targets, input_words = input_words, input_caps = input_caps)
+        else:
+            loss = model.get_loss(targets, input_words = input_words)
+
         epoch_costs.append(loss.data.numpy())
         loss.backward()
         optimizer.step()
@@ -132,11 +144,11 @@ for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it
     print("Epoch %i, cost average: %f" % (epoch, np.mean(epoch_costs)))
 
 # Final Evaluation after training
-eval_result = evaluate(model, dev_data, dictionaries)
-accuracys.append(eval_result['accuracy'])
-precisions.append(eval_result['precision'])
-recalls.append(eval_result['recall'])
-FB1s.append(eval_result['FB1'])
+#eval_result = evaluate(model, dev_data, dictionaries)
+#accuracys.append(eval_result['accuracy'])
+#precisions.append(eval_result['precision'])
+#recalls.append(eval_result['recall'])
+#FB1s.append(eval_result['FB1'])
 
 
 print("Plot final result")

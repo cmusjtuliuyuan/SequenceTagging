@@ -5,6 +5,8 @@ from utils import create_dico, create_mapping, zero_digits
 from utils import read_pre_training
 import numpy as np
 
+CAP_DIM = 4
+
 def load_sentences(path, zeros):
     """
     Load sentences. A line must contain at least a word and its tag.

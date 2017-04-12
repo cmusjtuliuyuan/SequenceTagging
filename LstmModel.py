@@ -3,20 +3,26 @@ import torch.autograd as autograd
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+from loader import CAP_DIM
 
 
 class LSTMTagger(nn.Module):
     
     def __init__(self, parameter):
         super(LSTMTagger, self).__init__()
+        self.lower = parameter['lower']
         self.hidden_dim = parameter['hidden_dim']
         
         self.word_embeddings = nn.Embedding(parameter['vocab_size'], 
                                             parameter['embedding_dim'])
+
+        self.input_dim = parameter['embedding_dim']
+        if self.lower:
+            self.input_dim += CAP_DIM
         
-        # The LSTM takes word embeddings as inputs, and outputs hidden states
+        # The LSTM takes word embeddings and captical embedding as inputs, and outputs hidden states
         # with dimensionality hidden_dim.
-        self.lstm = nn.LSTM(parameter['embedding_dim'], parameter['hidden_dim'])
+        self.lstm = nn.LSTM(self.input_dim, parameter['hidden_dim'])
         
         # The linear layer that maps from hidden state space to tag space
         self.hidden2tag = nn.Linear(parameter['hidden_dim'], parameter['tagset_size'])
@@ -33,10 +39,16 @@ class LSTMTagger(nn.Module):
         return (autograd.Variable(torch.Tensor(1, 1, self.hidden_dim)),
                 autograd.Variable(torch.Tensor(1, 1, self.hidden_dim)))
 
-    def forward(self, sentence):
-        embeds = self.word_embeddings(sentence)
-        lstm_out, self.hidden = self.lstm(embeds.view(len(sentence), 1, -1))
-        tag_space = self.hidden2tag(lstm_out.view(len(sentence), -1))
+    def forward(self, **sentence):
+        input_words = sentence['input_words']
+        embeds = self.word_embeddings(input_words)
+        
+        if self.lower:
+            input_caps = sentence['input_caps']
+            embeds = torch.cat((embeds, input_caps),1)
+
+        lstm_out, self.hidden = self.lstm(embeds.view(len(input_words), 1, -1))
+        tag_space = self.hidden2tag(lstm_out.view(len(input_words), -1))
         tag_scores = F.log_softmax(tag_space)
         return tag_scores
 
@@ -46,7 +58,15 @@ class LSTMTagger(nn.Module):
         tags = tags.data.numpy().reshape((-1,))
         return tags
 
-    def get_loss(self, sentence, tags):
-        tag_scores = self.forward(sentence)
+    def get_loss(self, tags, **sentence):
+        input_words = sentence['input_words']
+
+        if self.lower:
+            input_caps = sentence['input_caps']
+            tag_scores = self.forward(input_words = input_words,
+                                  input_caps = input_caps)
+        else:
+            tag_scores = self.forward(input_words = input_words)
+
         loss = self.loss_function(tag_scores, tags)
         return loss 
