@@ -105,11 +105,11 @@ for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it
     epoch_costs = []
 
     # evaluate
-    #eval_result = evaluate(model, dev_data, dictionaries)
-    #accuracys.append(eval_result['accuracy'])
-    #precisions.append(eval_result['precision'])
-    #recalls.append(eval_result['recall'])
-    #FB1s.append(eval_result['FB1'])
+    eval_result = evaluate(model, dev_data, dictionaries, opts.lower)
+    accuracys.append(eval_result['accuracy'])
+    precisions.append(eval_result['precision'])
+    recalls.append(eval_result['recall'])
+    FB1s.append(eval_result['FB1'])
 
     print("Starting epoch %i..." % (epoch))
     for i, index in enumerate(np.random.permutation(len(train_data))):
@@ -129,10 +129,7 @@ for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it
         # first check whether we use lower this parameter
         if opts.lower == 1:
             # We first convert it to one-hot, then input
-            input_caps = torch.FloatTensor(len(train_data[index]['caps']), CAP_DIM)
-            input_caps.zero_()
-            input_caps.scatter_(1, torch.LongTensor(train_data[index]['caps']).view(-1,1) ,1)
-            input_caps = autograd.Variable(input_caps)
+            input_caps = torch.LongTensor(train_data[index]['caps'])
             loss = model.get_loss(targets, input_words = input_words, input_caps = input_caps)
         else:
             loss = model.get_loss(targets, input_words = input_words)
@@ -144,11 +141,11 @@ for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it
     print("Epoch %i, cost average: %f" % (epoch, np.mean(epoch_costs)))
 
 # Final Evaluation after training
-#eval_result = evaluate(model, dev_data, dictionaries)
-#accuracys.append(eval_result['accuracy'])
-#precisions.append(eval_result['precision'])
-#recalls.append(eval_result['recall'])
-#FB1s.append(eval_result['FB1'])
+eval_result = evaluate(model, dev_data, dictionaries, opts.lower)
+accuracys.append(eval_result['accuracy'])
+precisions.append(eval_result['precision'])
+recalls.append(eval_result['recall'])
+FB1s.append(eval_result['FB1'])
 
 
 print("Plot final result")

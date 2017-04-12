@@ -44,7 +44,12 @@ class LSTMTagger(nn.Module):
         embeds = self.word_embeddings(input_words)
         
         if self.lower:
-            input_caps = sentence['input_caps']
+        	  # We first need to convert it into on-hot. Then concat it with the word_embedding layer
+            caps = sentence['input_caps']
+            input_caps = torch.FloatTensor(len(caps), CAP_DIM)
+            input_caps.zero_()
+            input_caps.scatter_(1, caps.view(-1,1) ,1)
+            input_caps = autograd.Variable(input_caps)
             embeds = torch.cat((embeds, input_caps),1)
 
         lstm_out, self.hidden = self.lstm(embeds.view(len(input_words), 1, -1))
@@ -52,8 +57,16 @@ class LSTMTagger(nn.Module):
         tag_scores = F.log_softmax(tag_space)
         return tag_scores
 
-    def get_tags(self, sentence):
-        tag_scores = self.forward(sentence)
+    def get_tags(self, **sentence):
+        input_words = sentence['input_words']
+
+        if self.lower:
+            input_caps = sentence['input_caps']
+            tag_scores = self.forward(input_words = input_words,
+                                  input_caps = input_caps)
+        else:
+            tag_scores = self.forward(input_words = input_words)
+        
         _, tags = torch.max(tag_scores, dim=1)
         tags = tags.data.numpy().reshape((-1,))
         return tags

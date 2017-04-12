@@ -52,7 +52,7 @@ def zero_digits(s):
     """
     return re.sub('\d', '0', s)
 
-def evaluate(model, sentences, dictionaries):
+def evaluate(model, sentences, dictionaries, lower):
     """
     Evaluate current model using CoNLL script.
     """
@@ -62,11 +62,17 @@ def evaluate(model, sentences, dictionaries):
     with codecs.open(output_path, 'w', 'utf8') as f:
        for index in xrange(len(sentences)):
             #input sentence
-            sentence_in = autograd.Variable(torch.LongTensor(sentences[index]['words']))
-
+            input_words = autograd.Variable(torch.LongTensor(sentences[index]['words']))
+            
             #calculate the tag score
+            if lower == 1:
+            # We first convert it to one-hot, then input
+                input_caps = torch.LongTensor(sentences[index]['caps'])
+                tags = model.get_tags(input_words = input_words, input_caps = input_caps)
+            else:
+                tags = model.get_tags(input_words = input_words)
 
-            tags = model.get_tags(sentence_in)
+            #tags = model.get_tags(sentence_in)
             # get predict tags
             predict_tags = [dictionaries['id_to_tag'][tag] if (tag in dictionaries['id_to_tag']) else 'START_STOP' for tag in tags]
 
