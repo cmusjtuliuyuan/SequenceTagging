@@ -35,6 +35,7 @@ class BiLSTM_CRF(nn.Module):
         self.vocab_size = parameter['vocab_size']
         self.tagset_size = parameter['tagset_size']
         self.lower = parameter['lower']
+        self.decode_method = parameter['decode_method']
         
         self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim)
         if self.lower:
@@ -260,9 +261,9 @@ class BiLSTM_CRF(nn.Module):
         #lstm_feats = self._get_lstm_features(sentence)
         
         # Find the best path, given the features.
-        if parameter['decode_method'] == 'marginal':
+        if self.decode_method == 'marginal':
             score, tag_seq = self._marginal_decode(feats)
-        elif parameter['decode_method'] == 'viterbi':
+        elif self.decode_method == 'viterbi':
             score, tag_seq = self._viterbi_decode(feats)
         else:
             print("Error wrong decode method")

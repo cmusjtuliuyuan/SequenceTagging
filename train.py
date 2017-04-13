@@ -49,7 +49,7 @@ optparser.add_option(
 )
 optparser.add_option(
     "-t", "--decode_method", default="marginal",
-    type='int', help="Choose viterbi or marginal to decode the output tag"
+    help="Choose viterbi or marginal to decode the output tag"
 )
 opts = optparser.parse_args()[0]
 
