@@ -247,6 +247,27 @@ class BiLSTM_CRF(nn.Module):
         gold_score = self._score_sentence(feats, tags)
         return forward_score - gold_score
 
+    def get_labelwise_loss(self, tags, **sentence):
+        # Get the emission scores from the BiLSTM
+        input_words = sentence['input_words']
+
+        if self.lower:
+            input_caps = sentence['input_caps']
+            feats = self._get_lstm_features(input_words = input_words,
+                                  input_caps = input_caps)
+        else:
+            feats = self._get_lstm_features(input_words = input_words)
+        #lstm_feats = self._get_lstm_features(sentence)
+        
+        # Get the marginal distribution
+        score, tag_seq = self._marginal_decode(feats)
+
+        loss = autograd.Variable(torch.Tensor([0.]))
+        for index,  y_true in enumerate(tags):
+            loss += score[indix, y_true]
+        # TODO implement labelwise_loss !!!!!
+        print(loss)
+
 
     def forward(self, **sentence): # dont confuse this with _forward_alg above.
         # Get the emission scores from the BiLSTM
@@ -279,7 +300,7 @@ class BiLSTM_CRF(nn.Module):
             _, tag_seq = self.forward(input_words = input_words,
                                   input_caps = input_caps)
         else:
-            _, tag_seq  = self.forward(input_words = input_words)
+            _, tag_seq = self.forward(input_words = input_words)
 
         #score, tag_seq = self.forward(sentence)
         return np.asarray(tag_seq).reshape((-1,))
