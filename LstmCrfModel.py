@@ -70,6 +70,7 @@ class BiLSTM_CRF(nn.Module):
         forward_var = autograd.Variable(init_alphas)
         
         # Iterate through the sentence
+        alpha = []
         for feat in feats:
             alphas_t = [] # The forward variables at this timestep
             for next_tag in xrange(self.tagset_size+2):
@@ -83,9 +84,60 @@ class BiLSTM_CRF(nn.Module):
                 # The forward variable for this tag is log-sum-exp of all the scores.
                 alphas_t.append(log_sum_exp(next_tag_var))
             forward_var = torch.cat(alphas_t).view(1, -1)
+            alpha.append(forward_var)
+
         terminal_var = forward_var + self.transitions[ STOP_TAG ]
-        alpha = log_sum_exp(terminal_var)
-        return alpha
+        log_partition_Z = log_sum_exp(terminal_var)
+        log_alpha = torch.cat(alpha , 0)
+        return log_partition_Z, log_alpha
+
+    def _backward_alg(self, feats):
+        # Do the backward algorithm
+        # ADD 2 here because of START_TAG and STOP_TAG 
+        init_betas = torch.Tensor(1, self.tagset_size+2).fill_(-10000.)
+        # START_TAG has all of the score
+        init_betas[0][ STOP_TAG ] = 0.
+        
+        # Wrap in a variable so that we will get automatic backprop
+        # This is beta_{T+1} vector 
+        backward_var = autograd.Variable(init_betas)
+        
+        # Iterate through the sentence
+        #alpha = []
+        beta = []
+
+        # First calculate beta_{T}, because we do not have Emition_matrix{, T+1}
+        # so we need to calculate it seperately
+        betas_t = [] 
+        for next_tag in xrange(self.tagset_size+2):
+            trans_score = self.transitions[:,next_tag].view(1, -1)
+            next_tag_var = backward_var + trans_score
+            betas_t.append(log_sum_exp(next_tag_var))
+        backward_var = torch.cat(betas_t).view(1, -1)
+        beta.append(backward_var)
+
+        # Second we can begin the loop
+        # became with Emition_matrix{, T}, beta_{T} to calulate beta_{T-1}
+        for i in range(len(feats), 1 , -1):
+            feat = feats[i-1]
+            betas_t = []
+            #alphas_t = [] # The forward variables at this timestep
+            for next_tag in xrange(self.tagset_size+2):
+
+                # broadcast the emission score: it is the same regardless of the previous tag
+                emit_score = torach.cat((torch.Tensor([[-1000]]),feat.view(1, -1),torch.Tensor([[-1000]])),0).view(1,-1)
+                # the ith entry of trans_score is the score of transitioning to next_tag from i
+                trans_score = self.transitions[:,next_tag].view(1, -1)
+                # The ith entry of next_tag_var is the value for the edge (i -> next_tag)
+                # before we do log-sum-exp
+                next_tag_var = backward_var + trans_score + emit_score
+                # The forward variable for this tag is log-sum-exp of all the scores.
+                betas_t.append(log_sum_exp(next_tag_var))
+            backward_var = torch.cat(betas_t).view(1, -1)
+            beta.append(backward_var)
+
+        log_beta = torch.cat(beta , 0)
+        return log_beta
         
     def _get_lstm_features(self, **sentence):
         input_words = sentence['input_words']
@@ -171,7 +223,7 @@ class BiLSTM_CRF(nn.Module):
 
         # nonegative log likelihood
         #feats = self._get_lstm_features(sentence)
-        forward_score = self._forward_alg(feats)
+        forward_score, _ = self._forward_alg(feats)
         gold_score = self._score_sentence(feats, tags)
         return forward_score - gold_score
 
