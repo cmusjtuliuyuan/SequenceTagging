@@ -53,12 +53,13 @@ class BiLSTM_CRF(nn.Module):
 
     def init_word_embedding(self, init_matrix):
         self.word_embeds.weight=nn.Parameter(torch.FloatTensor(init_matrix))
-        
+
+
     def init_hidden(self):
         return ( autograd.Variable( torch.randn(2, 1, self.hidden_dim)),
                  autograd.Variable( torch.randn(2, 1, self.hidden_dim)) )
-    
-    
+
+
     def _forward_alg(self, feats):
         # Do the forward algorithm to compute the partition function
         # ADD 2 here because of START_TAG and STOP_TAG
@@ -91,6 +92,7 @@ class BiLSTM_CRF(nn.Module):
         log_alpha = torch.cat(alpha , 0)
         return log_partition_Z, log_alpha
 
+
     def _backward_alg(self, feats):
         # Do the backward algorithm
         # ADD 2 here because of START_TAG and STOP_TAG 
@@ -103,15 +105,18 @@ class BiLSTM_CRF(nn.Module):
         backward_var = autograd.Variable(init_betas)
         
         # Iterate through the sentence
-        #alpha = []
         beta = []
 
         # First calculate beta_{T}, because we do not have Emition_matrix{, T+1}
         # so we need to calculate it seperately
         betas_t = [] 
+        next_tag_var = autograd.Variable(torch.Tensor(1, self.tagset_size+2).fill_(0.))
+
         for next_tag in xrange(self.tagset_size+2):
-            trans_score = self.transitions[:,next_tag].view(1, -1)
-            next_tag_var = backward_var + trans_score
+            # We add transition score in this way because 
+            #self.transition[:, next_tag] will not be contiguous, so we cannot use view function
+            for i, trans_val in enumerate(self.transitions[:,next_tag]):
+                next_tag_var[0,i] = backward_var[0,i]+trans_val
             betas_t.append(log_sum_exp(next_tag_var))
         backward_var = torch.cat(betas_t).view(1, -1)
         beta.append(backward_var)
@@ -124,21 +129,32 @@ class BiLSTM_CRF(nn.Module):
             #alphas_t = [] # The forward variables at this timestep
             for next_tag in xrange(self.tagset_size+2):
 
-                # broadcast the emission score: it is the same regardless of the previous tag
-                emit_score = torach.cat((torch.Tensor([[-1000]]),feat.view(1, -1),torch.Tensor([[-1000]])),0).view(1,-1)
-                # the ith entry of trans_score is the score of transitioning to next_tag from i
-                trans_score = self.transitions[:,next_tag].view(1, -1)
-                # The ith entry of next_tag_var is the value for the edge (i -> next_tag)
-                # before we do log-sum-exp
-                next_tag_var = backward_var + trans_score + emit_score
-                # The forward variable for this tag is log-sum-exp of all the scores.
+                emit_score = feat.view(1, -1)
+                
+                next_tag_var = backward_var + emit_score
+                # 
+                for i, trans_val in enumerate(self.transitions[:,next_tag]):
+                    next_tag_var[0,i] = backward_var[0,i]+trans_val
+
                 betas_t.append(log_sum_exp(next_tag_var))
             backward_var = torch.cat(betas_t).view(1, -1)
             beta.append(backward_var)
 
-        log_beta = torch.cat(beta , 0)
+        log_beta = torch.cat(beta[::-1] , 0)
         return log_beta
-        
+
+
+    def _marginal_decode(self, feats):
+        # Use forward backward algorithm to calculate the marginal distribution
+        # Decode according to the marginal distribution.
+        _, log_alpha = self._forward_alg(feats)
+        log_beta = self._backward_alg(feats)
+        score = log_alpha+log_beta
+        _, tags = torch.max(score, 1)
+        tags = tags.view(-1).data.tolist()
+        return score, tags
+
+
     def _get_lstm_features(self, **sentence):
         input_words = sentence['input_words']
         embeds = self.word_embeds(input_words)
@@ -155,7 +171,8 @@ class BiLSTM_CRF(nn.Module):
         lstm_out = lstm_out.view(len(input_words), self.hidden_dim)
         lstm_feats = self.hidden2tag(lstm_out)
         return lstm_feats
-        
+
+
     def _score_sentence(self, feats, tags):
         # Gives the score of a provided tag sequence
         score = autograd.Variable( torch.Tensor([0]) )
@@ -167,7 +184,8 @@ class BiLSTM_CRF(nn.Module):
             score = score + self.transitions[tags[i+1], tags[i]] + feat[tags[i+1]]
         score = score + self.transitions[STOP_TAG, tags[-1]]
         return score
-    
+
+
     def _viterbi_decode(self, feats):
         backpointers = []
         
@@ -194,7 +212,7 @@ class BiLSTM_CRF(nn.Module):
             # of viterbi variables we just computed
             forward_var = (torch.cat(viterbivars_t) + feat).view(1, -1)
             backpointers.append(bptrs_t)
-        
+
         # Transition to STOP_TAG
         terminal_var = forward_var + self.transitions[ STOP_TAG ]
         best_tag_id = argmax(terminal_var)
@@ -210,6 +228,7 @@ class BiLSTM_CRF(nn.Module):
 
         best_path.reverse()
         return path_score, best_path
+
 
     def get_loss(self, tags, **sentence):
         input_words = sentence['input_words']
@@ -227,6 +246,7 @@ class BiLSTM_CRF(nn.Module):
         gold_score = self._score_sentence(feats, tags)
         return forward_score - gold_score
 
+
     def forward(self, **sentence): # dont confuse this with _forward_alg above.
         # Get the emission scores from the BiLSTM
         input_words = sentence['input_words']
@@ -240,9 +260,15 @@ class BiLSTM_CRF(nn.Module):
         #lstm_feats = self._get_lstm_features(sentence)
         
         # Find the best path, given the features.
-        score, tag_seq = self._viterbi_decode(feats)
+        if parameter['decode_method'] == 'marginal':
+            score, tag_seq = self._marginal_decode(feats)
+        elif parameter['decode_method'] == 'viterbi':
+            score, tag_seq = self._viterbi_decode(feats)
+        else:
+            print("Error wrong decode method")
 
         return score, tag_seq
+
 
     def get_tags(self, **sentence):
         input_words = sentence['input_words']

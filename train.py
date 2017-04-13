@@ -32,7 +32,7 @@ optparser.add_option(
     type='int', help="Replace digits with 0"
 )
 optparser.add_option(
-    "-p", "--pre_emb", default='embedding/glove.6B.100d.txt',
+    "-p", "--pre_emb", default=None,#'embedding/glove.6B.100d.txt',
     help="Location of pretrained embeddings"
 )
 optparser.add_option(
@@ -46,6 +46,10 @@ optparser.add_option(
 optparser.add_option(
     "-d", "--hidden_dim", default="100",
     type='int', help="LSTM hidden dimension"
+)
+optparser.add_option(
+    "-t", "--decode_method", default="marginal",
+    type='int', help="Choose viterbi or marginal to decode the output tag"
 )
 opts = optparser.parse_args()[0]
 
@@ -80,6 +84,7 @@ Model_parameters['embedding_dim'] = opts.embedding_dim
 Model_parameters['hidden_dim'] = opts.hidden_dim
 Model_parameters['tagset_size'] = tagset_size
 Model_parameters['lower'] = opts.lower == 1
+Model_parameters['decode_method'] = opts.decode_method
 
 
 #model = LstmModel.LSTMTagger(Model_parameters)
