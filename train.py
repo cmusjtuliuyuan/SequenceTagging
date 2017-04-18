@@ -48,7 +48,7 @@ optparser.add_option(
     type='int', help="LSTM hidden dimension"
 )
 optparser.add_option(
-    "-t", "--decode_method", default="marginal",
+    "-t", "--decode_method", default="viterbi",
     help="Choose viterbi or marginal to decode the output tag"
 )
 opts = optparser.parse_args()[0]
