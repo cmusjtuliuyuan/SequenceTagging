@@ -97,9 +97,7 @@ class BiLSTM_CRF(nn.Module):
     def _backward_alg(self, feats):
         # Do the backward algorithm
         # ADD 2 here because of START_TAG and STOP_TAG 
-        init_betas = torch.Tensor(1, self.tagset_size+2).fill_(-10000.)
-        # START_TAG has all of the score
-        init_betas[0][ STOP_TAG ] = 0.
+        init_betas = torch.Tensor(1, self.tagset_size+2).fill_(0)
         
         # Wrap in a variable so that we will get automatic backprop
         # This is beta_{T+1} vector 
@@ -124,8 +122,7 @@ class BiLSTM_CRF(nn.Module):
 
         # Second we can begin the loop
         # became with Emition_matrix{, T}, beta_{T} to calulate beta_{T-1}
-        for i in range(len(feats), 1 , -1):
-            feat = feats[i-1]
+        for feat in feats[1::-1]:
             betas_t = []
             #alphas_t = [] # The forward variables at this timestep
             for next_tag in xrange(self.tagset_size+2):
@@ -135,7 +132,7 @@ class BiLSTM_CRF(nn.Module):
                 next_tag_var = backward_var + emit_score
                 # 
                 for i, trans_val in enumerate(self.transitions[:,next_tag]):
-                    next_tag_var[0,i] = backward_var[0,i]+trans_val
+                    next_tag_var[0,i] += trans_val
 
                 betas_t.append(log_sum_exp(next_tag_var))
             backward_var = torch.cat(betas_t).view(1, -1)
