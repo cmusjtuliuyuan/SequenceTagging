@@ -97,7 +97,7 @@ def evaluate(model, sentences, dictionaries, lower):
     print(eval_lines[1])
     return result
 
-def plot_result():
+def plot_result(accuracys, precisions, recalls, FB1s):
     plt.figure()
     plt.plot(accuracys,"g-",label="accuracy")
     plt.plot(precisions,"r-.",label="precision")

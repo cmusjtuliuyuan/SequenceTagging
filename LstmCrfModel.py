@@ -122,7 +122,9 @@ class BiLSTM_CRF(nn.Module):
 
         # Second we can begin the loop
         # became with Emition_matrix{, T}, beta_{T} to calulate beta_{T-1}
-        for feat in feats[1::-1]:
+        # slice step has to be greater than 0!!! so urgely in Pytorch
+        for j in range(len(feats), 1, -1):
+            feat = feats[j-1]
             betas_t = []
             #alphas_t = [] # The forward variables at this timestep
             for next_tag in xrange(self.tagset_size+2):
@@ -132,7 +134,7 @@ class BiLSTM_CRF(nn.Module):
                 next_tag_var = backward_var + emit_score
                 # 
                 for i, trans_val in enumerate(self.transitions[:,next_tag]):
-                    next_tag_var[0,i] += trans_val
+                    next_tag_var[0,i] = next_tag_var[0,i] + trans_val
 
                 betas_t.append(log_sum_exp(next_tag_var))
             backward_var = torch.cat(betas_t).view(1, -1)
