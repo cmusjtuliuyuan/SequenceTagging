@@ -36,6 +36,7 @@ class BiLSTM_CRF(nn.Module):
         self.tagset_size = parameter['tagset_size']
         self.lower = parameter['lower']
         self.decode_method = parameter['decode_method']
+        self.loss_function = parameter['loss_function']
         
         self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim)
         if self.lower:
@@ -229,8 +230,16 @@ class BiLSTM_CRF(nn.Module):
         best_path.reverse()
         return path_score, best_path
 
-
     def get_loss(self, tags, **sentence):
+        if self.loss_function == 'likelihood':
+            return self.get_neg_log_likilihood_loss(tags, **sentence)
+        elif self.loss_function == 'labelwise':
+            return self.get_labelwise_loss(tags, **sentence)
+        else:
+            print("ERROR: The parameter of loss function is wrong")
+
+
+    def get_neg_log_likilihood_loss(self, tags, **sentence):
         input_words = sentence['input_words']
 
         if self.lower:
@@ -262,10 +271,8 @@ class BiLSTM_CRF(nn.Module):
         score, tag_seq = self._marginal_decode(feats)
 
         loss = autograd.Variable(torch.Tensor([0.]))
-        for index,  y_true in enumerate(tags):
-            loss += score[indix, y_true]
-        # TODO implement labelwise_loss !!!!!
-        print(loss)
+        print(tags)
+        print(score)
 
 
     def forward(self, **sentence): # dont confuse this with _forward_alg above.

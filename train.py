@@ -51,6 +51,10 @@ optparser.add_option(
     "-t", "--decode_method", default="marginal",
     help="Choose viterbi or marginal to decode the output tag"
 )
+optparser.add_option(
+    "-c", "--loss_function", default="likelihood",
+    help="Choose likelihood or labelwise to determine the loss function"
+)
 opts = optparser.parse_args()[0]
 
 # Parse parameters
@@ -85,6 +89,7 @@ Model_parameters['hidden_dim'] = opts.hidden_dim
 Model_parameters['tagset_size'] = tagset_size
 Model_parameters['lower'] = opts.lower == 1
 Model_parameters['decode_method'] = opts.decode_method
+Model_parameters['loss_function'] = opts.loss_function
 
 
 #model = LstmModel.LSTMTagger(Model_parameters)
