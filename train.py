@@ -52,7 +52,7 @@ optparser.add_option(
     help="Choose viterbi or marginal to decode the output tag"
 )
 optparser.add_option(
-    "-c", "--loss_function", default="likelihood",
+    "-c", "--loss_function", default="labelwise",
     help="Choose likelihood or labelwise to determine the loss function"
 )
 opts = optparser.parse_args()[0]
@@ -103,8 +103,8 @@ if opts.pre_emb:
 	  					  opts.pre_emb, opts.embedding_dim)
 	  model.init_word_embedding(initial_matrix)
 
-n_epochs = 10 # number of epochs over the training set
-
+n_epochs = 2 # number of epochs over the training set
+Division = 100
 accuracys = []
 precisions = []
 recalls = []
@@ -114,15 +114,17 @@ FB1s =[]
 for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it is toy data
     epoch_costs = []
 
-    # evaluate
-    eval_result = evaluate(model, dev_data, dictionaries, opts.lower)
-    accuracys.append(eval_result['accuracy'])
-    precisions.append(eval_result['precision'])
-    recalls.append(eval_result['recall'])
-    FB1s.append(eval_result['FB1'])
 
     print("Starting epoch %i..." % (epoch))
     for i, index in enumerate(np.random.permutation(len(train_data))):
+        if i %(len(train_data)/Division) == 0:
+            # evaluate
+            eval_result = evaluate(model, dev_data, dictionaries, opts.lower)
+            accuracys.append(eval_result['accuracy'])
+            precisions.append(eval_result['precision'])
+            recalls.append(eval_result['recall'])
+            FB1s.append(eval_result['FB1'])
+
         # Step 1. Remember that Pytorch accumulates gradients.  We need to clear them out
         # before each instance
         model.zero_grad()

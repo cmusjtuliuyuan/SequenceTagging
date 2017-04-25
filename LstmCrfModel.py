@@ -268,11 +268,23 @@ class BiLSTM_CRF(nn.Module):
         #lstm_feats = self._get_lstm_features(sentence)
         
         # Get the marginal distribution
-        score, tag_seq = self._marginal_decode(feats)
+        score, _ = self._marginal_decode(feats)
+        tags = tags.data.numpy()
 
         loss = autograd.Variable(torch.Tensor([0.]))
-        print(tags)
-        print(score)
+        Q = nn.Sigmoid()
+        for tag, log_p in zip(tags, score):
+            Pw = log_p[tag]
+            if tag == 0:
+                not_tag = log_p[1:]
+            elif tag == len(log_p) - 1:
+                not_tag = log_p[:tag]
+            else:
+                not_tag = torch.cat((log_p[:tag], log_p[tag+1:]))
+            maxPw = torch.max(not_tag)
+            loss = loss - Q(Pw - maxPw)
+        return loss
+
 
 
     def forward(self, **sentence): # dont confuse this with _forward_alg above.

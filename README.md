@@ -21,4 +21,4 @@ The accuracy after pre-training is 92.88%, before pre-training is 90.96%
 
 The marginal decode is done.
 
-I am writing the maximum labelwise accuracy now. 
+The maximum labelwise accuracy part is done.  

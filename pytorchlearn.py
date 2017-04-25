@@ -12,9 +12,12 @@ loss = autograd.Variable(torch.Tensor([0.]))
 Q = nn.Sigmoid()
 for tag, log_p in zip(tags, score):
     Pw = log_p[tag]
-    log_p[tag] = log_p[tag] + 10000.
-    maxPw = torch.max(log_p)
-    log_p[tag] = log_p[tag] + 10000.
-    print(Pw)
-    #loss = loss + Q(Pw - maxPw)
-
+    if tag == 0:
+        not_tag = log_p[1:]
+    elif tag == len(log_p) - 1:
+        not_tag = log_p[:tag]
+    else:
+        not_tag = torch.cat((log_p[:tag], log_p[tag+1:]))
+    maxPw = torch.max(not_tag)
+    loss = loss + Q(Pw - maxPw)
+print(loss)
