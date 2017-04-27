@@ -6,6 +6,7 @@ import numpy as np
 from loader import CAP_DIM
 START_TAG = -2
 STOP_TAG = -1
+DROP_OUT = 0.5
 
 
 
@@ -42,6 +43,7 @@ class BiLSTM_CRF(nn.Module):
         if self.lower:
             self.embedding_dim += CAP_DIM
 
+        self.dropout = nn.Dropout(p=DROP_OUT)
         self.lstm = nn.LSTM(self.embedding_dim, self.hidden_dim/2, num_layers=1, bidirectional=True)
         
         # Maps the output of the LSTM into tag space.
@@ -156,7 +158,7 @@ class BiLSTM_CRF(nn.Module):
         return score, tags
 
 
-    def _get_lstm_features(self, **sentence):
+    def _get_lstm_features(self, dropout, **sentence):
         input_words = sentence['input_words']
         embeds = self.word_embeds(input_words)
         if self.lower:
@@ -167,6 +169,9 @@ class BiLSTM_CRF(nn.Module):
             input_caps.scatter_(1, caps.view(-1,1) ,1)
             input_caps = autograd.Variable(input_caps)
             embeds = torch.cat((embeds, input_caps),1)
+
+        if dropout:
+            embeds = self.dropout(embeds)
 
         lstm_out, self.hidden = self.lstm(embeds.view(len(input_words), 1, -1))
         lstm_out = lstm_out.view(len(input_words), self.hidden_dim)
@@ -244,10 +249,10 @@ class BiLSTM_CRF(nn.Module):
 
         if self.lower:
             input_caps = sentence['input_caps']
-            feats = self._get_lstm_features(input_words = input_words,
+            feats = self._get_lstm_features(dropout = True, input_words = input_words,
                                   input_caps = input_caps)
         else:
-            feats = self._get_lstm_features(input_words = input_words)
+            feats = self._get_lstm_features(dropout = True, input_words = input_words)
 
         # nonegative log likelihood
         #feats = self._get_lstm_features(sentence)
@@ -261,10 +266,10 @@ class BiLSTM_CRF(nn.Module):
 
         if self.lower:
             input_caps = sentence['input_caps']
-            feats = self._get_lstm_features(input_words = input_words,
+            feats = self._get_lstm_features(dropout = True, input_words = input_words,
                                   input_caps = input_caps)
         else:
-            feats = self._get_lstm_features(input_words = input_words)
+            feats = self._get_lstm_features(dropout = True, input_words = input_words)
         #lstm_feats = self._get_lstm_features(sentence)
         
         # Get the marginal distribution
@@ -293,10 +298,10 @@ class BiLSTM_CRF(nn.Module):
 
         if self.lower:
             input_caps = sentence['input_caps']
-            feats = self._get_lstm_features(input_words = input_words,
+            feats = self._get_lstm_features(dropout = False, input_words = input_words,
                                   input_caps = input_caps)
         else:
-            feats = self._get_lstm_features(input_words = input_words)
+            feats = self._get_lstm_features(dropout = False, input_words = input_words)
         #lstm_feats = self._get_lstm_features(sentence)
         
         # Find the best path, given the features.
