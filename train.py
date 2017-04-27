@@ -48,12 +48,16 @@ optparser.add_option(
     type='int', help="LSTM hidden dimension"
 )
 optparser.add_option(
-    "-t", "--decode_method", default="marginal",
+    "-t", "--decode_method", default="viterbi",
     help="Choose viterbi or marginal to decode the output tag"
 )
 optparser.add_option(
-    "-c", "--loss_function", default="labelwise",
+    "-o", "--loss_function", default="likelihood",
     help="Choose likelihood or labelwise to determine the loss function"
+)
+optparser.add_option(
+    "-c", "--clip", default=5.0,
+    help="gradient clipping l2 norm"
 )
 opts = optparser.parse_args()[0]
 
@@ -148,6 +152,7 @@ for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it
 
         epoch_costs.append(loss.data.numpy())
         loss.backward()
+        nn.utils.clip_grad_norm(model.parameters(), opts.clip)
         optimizer.step()
 			
     print("Epoch %i, cost average: %f" % (epoch, np.mean(epoch_costs)))
