@@ -103,8 +103,8 @@ if opts.pre_emb:
 	  					  opts.pre_emb, opts.embedding_dim)
 	  model.init_word_embedding(initial_matrix)
 
-n_epochs = 2 # number of epochs over the training set
-Division = 100
+n_epochs = 3 # number of epochs over the training set
+Division = 10
 accuracys = []
 precisions = []
 recalls = []
