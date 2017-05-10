@@ -170,8 +170,8 @@ class BiLSTM_CRF(nn.Module):
             input_caps = autograd.Variable(input_caps)
             embeds = torch.cat((embeds, input_caps),1)
 
-        if dropout:
-            embeds = self.dropout(embeds)
+        #if dropout:
+        #    embeds = self.dropout(embeds)
 
         lstm_out, self.hidden = self.lstm(embeds.view(len(input_words), 1, -1))
         lstm_out = lstm_out.view(len(input_words), self.hidden_dim)
