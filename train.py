@@ -98,7 +98,7 @@ Model_parameters['loss_function'] = opts.loss_function
 
 #model = LstmModel.LSTMTagger(Model_parameters)
 model = LstmCrfModel.BiLSTM_CRF(Model_parameters)
-optimizer = optim.Adam(model.parameters(), lr=0.01)
+optimizer = optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-4)
 
 # If using pre-train, we need to initialize word-embedding layer
 if opts.pre_emb:
