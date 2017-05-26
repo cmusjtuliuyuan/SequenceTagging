@@ -60,8 +60,8 @@ class BiLSTM_CRF(nn.Module):
 
 
     def init_hidden(self):
-        return ( autograd.Variable( torch.randn(2, 1, self.hidden_dim)),
-                 autograd.Variable( torch.randn(2, 1, self.hidden_dim)) )
+        return ( autograd.Variable( torch.zeros(2, 1, self.hidden_dim)),
+                 autograd.Variable( torch.zeros(2, 1, self.hidden_dim)) )
 
 
     def _forward_alg(self, feats):
@@ -159,6 +159,7 @@ class BiLSTM_CRF(nn.Module):
 
 
     def _get_lstm_features(self, dropout, **sentence):
+    	self.hidden = self.init_hidden()
         input_words = sentence['input_words']
         embeds = self.word_embeds(input_words)
         if self.lower:
