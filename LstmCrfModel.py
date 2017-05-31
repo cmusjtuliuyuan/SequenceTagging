@@ -246,32 +246,15 @@ class BiLSTM_CRF(nn.Module):
 
 
     def get_neg_log_likilihood_loss(self, tags, **sentence):
-        input_words = sentence['input_words']
-
-        if self.lower:
-            input_caps = sentence['input_caps']
-            feats = self._get_lstm_features(dropout = True, input_words = input_words,
-                                  input_caps = input_caps)
-        else:
-            feats = self._get_lstm_features(dropout = True, input_words = input_words)
-
         # nonegative log likelihood
-        #feats = self._get_lstm_features(sentence)
+        feats = self._get_lstm_features(dropout=False, **sentence)
         forward_score, _ = self._forward_alg(feats)
         gold_score = self._score_sentence(feats, tags)
         return forward_score - gold_score
 
     def get_labelwise_loss(self, tags, **sentence):
         # Get the emission scores from the BiLSTM
-        input_words = sentence['input_words']
-
-        if self.lower:
-            input_caps = sentence['input_caps']
-            feats = self._get_lstm_features(dropout = True, input_words = input_words,
-                                  input_caps = input_caps)
-        else:
-            feats = self._get_lstm_features(dropout = True, input_words = input_words)
-        #lstm_feats = self._get_lstm_features(sentence)
+        feats = self._get_lstm_features(dropout=False, **sentence)
         
         # Get the marginal distribution
         score, _ = self._marginal_decode(feats)
@@ -295,15 +278,7 @@ class BiLSTM_CRF(nn.Module):
 
     def forward(self, **sentence): # dont confuse this with _forward_alg above.
         # Get the emission scores from the BiLSTM
-        input_words = sentence['input_words']
-
-        if self.lower:
-            input_caps = sentence['input_caps']
-            feats = self._get_lstm_features(dropout = False, input_words = input_words,
-                                  input_caps = input_caps)
-        else:
-            feats = self._get_lstm_features(dropout = False, input_words = input_words)
-        #lstm_feats = self._get_lstm_features(sentence)
+        feats = self._get_lstm_features(dropout=False, **sentence)
         
         # Find the best path, given the features.
         if self.decode_method == 'marginal':
@@ -317,14 +292,5 @@ class BiLSTM_CRF(nn.Module):
 
 
     def get_tags(self, **sentence):
-        input_words = sentence['input_words']
-
-        if self.lower:
-            input_caps = sentence['input_caps']
-            _, tag_seq = self.forward(input_words = input_words,
-                                  input_caps = input_caps)
-        else:
-            _, tag_seq = self.forward(input_words = input_words)
-
-        #score, tag_seq = self.forward(sentence)
+        score, tag_seq = self.forward(**sentence)
         return np.asarray(tag_seq).reshape((-1,))
