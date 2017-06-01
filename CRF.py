@@ -182,3 +182,33 @@ class CRF(nn.Module):
             score = score + self.transitions[tags[i+1], tags[i]] + feat[tags[i+1]]
         score = score + self.transitions[STOP_TAG, tags[-1]]
         return score
+
+    def _get_neg_log_likilihood_loss(self, feats, tags):
+        # nonegative log likelihood
+        forward_score, _ = self._forward_alg(feats)
+        gold_score = self._score_sentence(feats, tags)
+        return forward_score - gold_score
+
+
+    def _get_labelwise_loss(self, feats, tags):
+    	'''
+    	Training Conditional Random Fields for Maximum Labelwise Accuracy 
+    	Please look at this paper
+    	'''
+        # Get the marginal distribution
+        score, _ = self._marginal_decode(feats)
+        tags = tags.data.numpy()
+
+        loss = autograd.Variable(torch.Tensor([0.]))
+        Q = nn.Sigmoid()
+        for tag, log_p in zip(tags, score):
+            Pw = log_p[tag]
+            if tag == 0:
+                not_tag = log_p[1:]
+            elif tag == len(log_p) - 1:
+                not_tag = log_p[:tag]
+            else:
+                not_tag = torch.cat((log_p[:tag], log_p[tag+1:]))
+            maxPw = torch.max(not_tag)
+            loss = loss - Q(Pw - maxPw)
+        return loss

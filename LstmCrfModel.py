@@ -71,48 +71,15 @@ class BiLSTM_CRF(nn.Module):
 
 
     def get_loss(self, tags, **sentence):
+    	# Get the emission scores from the BiLSTM
+        feats = self._get_lstm_features(dropout=False, **sentence)
+
         if self.loss_function == 'likelihood':
-            return self.get_neg_log_likilihood_loss(tags, **sentence)
+            return self.CRF._get_neg_log_likilihood_loss(feats, tags)
         elif self.loss_function == 'labelwise':
-            return self.get_labelwise_loss(tags, **sentence)
+            return self.CRF._get_labelwise_loss(feats, tags)
         else:
             print("ERROR: The parameter of loss function is wrong")
-
-
-    def get_neg_log_likilihood_loss(self, tags, **sentence):
-        # nonegative log likelihood
-        feats = self._get_lstm_features(dropout=False, **sentence)
-        forward_score, _ = self.CRF._forward_alg(feats)
-        gold_score = self._score_sentence(feats, tags)
-        return forward_score - gold_score
-
-
-    def get_labelwise_loss(self, tags, **sentence):
-    	'''
-    	Training Conditional Random Fields for Maximum Labelwise Accuracy 
-    	Please look at this paper
-    	'''
-        # Get the emission scores from the BiLSTM
-        feats = self._get_lstm_features(dropout=False, **sentence)
-        
-        # Get the marginal distribution
-        score, _ = self.CRF._marginal_decode(feats)
-        tags = tags.data.numpy()
-
-        loss = autograd.Variable(torch.Tensor([0.]))
-        Q = nn.Sigmoid()
-        for tag, log_p in zip(tags, score):
-            Pw = log_p[tag]
-            if tag == 0:
-                not_tag = log_p[1:]
-            elif tag == len(log_p) - 1:
-                not_tag = log_p[:tag]
-            else:
-                not_tag = torch.cat((log_p[:tag], log_p[tag+1:]))
-            maxPw = torch.max(not_tag)
-            loss = loss - Q(Pw - maxPw)
-        return loss
-
 
     def forward(self, **sentence): # dont confuse this with _forward_alg above.
         # Get the emission scores from the BiLSTM
