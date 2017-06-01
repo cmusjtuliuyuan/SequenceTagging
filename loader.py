@@ -4,6 +4,7 @@ import codecs
 from utils import create_dico, create_mapping, zero_digits
 from utils import read_pre_training
 import numpy as np
+import string 
 
 CAP_DIM = 4
 
@@ -96,6 +97,29 @@ def cap_feature(s):
         return 2
     else:
         return 3
+
+def letter_digit_feature(s):
+    if re.search('[a-zA-Z]',s) and re.search('[0-9]',s):
+        return 0
+    elif re.search('[a-zA-Z]',s):
+        return 1
+    elif re.search('[0-9]',s):
+        return 2
+    else:
+        return 3
+
+def apostrophe_end_feature(s):
+    if len(s)>1 and s[-2:] == "'s":
+        return 0
+    else:
+        return 1
+
+
+def punctuation_feature(s):
+    if re.search('['+string.punctuation+']', 'a'):
+        return 0
+    else: 
+        return 1
 
 
 def prepare_dataset(sentences, word_to_id, tag_to_id, lower=False):
