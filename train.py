@@ -9,7 +9,8 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from utils import evaluate, plot_result
-
+np.random.seed(15213)
+torch.manual_seed(15213)
 
 
 optparser = optparse.OptionParser()
@@ -42,7 +43,7 @@ optparser.add_option(
     type='int', help="words hidden dimension"
 )
 optparser.add_option(
-    "-d", "--hidden_dim", default="100",
+    "-d", "--hidden_dim", default="200",
     type='int', help="LSTM hidden dimension"
 )
 optparser.add_option(
