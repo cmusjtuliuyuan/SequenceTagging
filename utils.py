@@ -66,9 +66,15 @@ def evaluate(model, sentences, dictionaries, lower):
             
             #calculate the tag score
             if lower == 1:
-            # We first convert it to one-hot, then input
                 input_caps = torch.LongTensor(sentences[index]['caps'])
-                tags = model.get_tags(input_words = input_words, input_caps = input_caps)
+                input_letter_digits = torch.LongTensor(sentences[index]['letter_digits'])
+                input_apostrophe_ends = torch.LongTensor(sentences[index]['apostrophe_ends'])
+                input_punctuations = torch.LongTensor(sentences[index]['punctuations'])
+                tags = model.get_tags(input_words = input_words,
+                                      input_caps = input_caps,
+                                      input_letter_digits = input_letter_digits,
+                                      input_apostrophe_ends = input_apostrophe_ends,
+                                      input_punctuations = input_punctuations )
             else:
                 tags = model.get_tags(input_words = input_words)
 

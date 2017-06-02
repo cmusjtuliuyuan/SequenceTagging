@@ -6,7 +6,12 @@ from utils import read_pre_training
 import numpy as np
 import string 
 
-CAP_DIM = 4
+FEATURE_DIM = {
+    'input_caps': 4,
+    'input_letter_digits': 4,
+    'input_apostrophe_ends': 2,
+    'input_punctuations': 2,
+}
 
 def load_sentences(path, zeros):
     """
@@ -136,11 +141,17 @@ def prepare_dataset(sentences, word_to_id, tag_to_id, lower=False):
                  for w in str_words]
         caps = [cap_feature(w) for w in str_words]
         pos = [w[1] for w in s]
+        letter_digits = [letter_digit_feature(w) for w in str_words]
+        apostrophe_ends = [apostrophe_end_feature(w) for w in str_words]
+        punctuations = [punctuation_feature(w) for w in str_words]
         tags = [tag_to_id[w[-1]] for w in s]
         data.append({
             'str_words': str_words,
             'words': words,
             'caps': caps,
+            'letter_digits': letter_digits,
+            'apostrophe_ends': apostrophe_ends,
+            'punctuations': punctuations,
             'pos': pos,
             'tags': tags,
         })

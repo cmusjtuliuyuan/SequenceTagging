@@ -21,4 +21,8 @@ The accuracy after pre-training is 92.88%, before pre-training is 90.96%
 
 The marginal decode is done.
 
-The maximum labelwise accuracy part is done.  
+The maximum labelwise accuracy part is done.
+
+Split LSTMCRF into two models. Add CRF module.
+
+Add some hand engineer.

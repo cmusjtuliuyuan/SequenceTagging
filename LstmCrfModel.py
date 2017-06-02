@@ -3,11 +3,9 @@ import torch.autograd as autograd
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from loader import CAP_DIM
+from loader import FEATURE_DIM
 from CRF import CRF
 DROP_OUT = 0.5
-START_TAG = -2
-STOP_TAG = -1
 
 
 class BiLSTM_CRF(nn.Module):
@@ -24,7 +22,7 @@ class BiLSTM_CRF(nn.Module):
         
         self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim)
         if self.lower:
-            self.embedding_dim += CAP_DIM
+            self.embedding_dim += sum(FEATURE_DIM.values())
 
         self.dropout = nn.Dropout(p=DROP_OUT)
         self.lstm = nn.LSTM(self.embedding_dim, self.hidden_dim/2, num_layers=1, bidirectional=True)
@@ -49,17 +47,19 @@ class BiLSTM_CRF(nn.Module):
 
 
     def _get_lstm_features(self, dropout, **sentence):
-    	self.hidden = self.init_hidden()
+        self.hidden = self.init_hidden()
         input_words = sentence['input_words']
         embeds = self.word_embeds(input_words)
         if self.lower:
-              # We first need to convert it into on-hot. Then concat it with the word_embedding layer
-            caps = sentence['input_caps']
-            input_caps = torch.FloatTensor(len(caps), CAP_DIM)
-            input_caps.zero_()
-            input_caps.scatter_(1, caps.view(-1,1) ,1)
-            input_caps = autograd.Variable(input_caps)
-            embeds = torch.cat((embeds, input_caps),1)
+            # We first need to convert it into on-hot. Then concat it with the word_embedding layer
+            for input_features_name in ('input_caps', 'input_letter_digits',
+                                   'input_apostrophe_ends','input_punctuations'):
+                features = sentence[input_features_name]
+                input_features = torch.FloatTensor(len(features), FEATURE_DIM[input_features_name])
+                input_features.zero_()
+                input_features.scatter_(1, features.view(-1,1) ,1)
+                input_features = autograd.Variable(input_features)
+                embeds = torch.cat((embeds, input_features),1)
 
         #if dropout:
         #    embeds = self.dropout(embeds)
@@ -71,7 +71,7 @@ class BiLSTM_CRF(nn.Module):
 
 
     def get_loss(self, tags, **sentence):
-    	# Get the emission scores from the BiLSTM
+        # Get the emission scores from the BiLSTM
         feats = self._get_lstm_features(dropout=False, **sentence)
 
         if self.loss_function == 'likelihood':
