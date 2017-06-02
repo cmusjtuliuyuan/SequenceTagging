@@ -41,8 +41,8 @@ class BiLSTM_CRF(nn.Module):
 
 
     def init_hidden(self):
-        return ( autograd.Variable( torch.zeros(2, 1, self.hidden_dim)),
-                 autograd.Variable( torch.zeros(2, 1, self.hidden_dim)) )
+        return ( autograd.Variable( torch.zeros(2, 1, self.hidden_dim/2)),
+                 autograd.Variable( torch.zeros(2, 1, self.hidden_dim/2)) )
 
 
 
@@ -64,7 +64,7 @@ class BiLSTM_CRF(nn.Module):
         #if dropout:
         #    embeds = self.dropout(embeds)
 
-        lstm_out, self.hidden = self.lstm(embeds.view(len(input_words), 1, -1))
+        lstm_out, self.hidden = self.lstm(embeds.view(len(input_words), 1, -1), self.hidden)
         lstm_out = lstm_out.view(len(input_words), self.hidden_dim)
         lstm_feats = self.hidden2tag(lstm_out)
         return lstm_feats
