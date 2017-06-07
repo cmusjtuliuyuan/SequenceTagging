@@ -19,6 +19,7 @@ class BiLSTM_CRF(nn.Module):
         self.lower = parameter['lower']
         self.decode_method = parameter['decode_method']
         self.loss_function = parameter['loss_function']
+        self.freeze = parameter['freeze']
         
         self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim)
         if self.lower:
@@ -32,22 +33,14 @@ class BiLSTM_CRF(nn.Module):
         self.hidden2tag = nn.Linear(self.hidden_dim, self.tagset_size+2)
         
         self.CRF = CRF(self.tagset_size)
-        
-        self.hidden = self.init_hidden()
 
 
     def init_word_embedding(self, init_matrix):
         self.word_embeds.weight=nn.Parameter(torch.FloatTensor(init_matrix))
-
-
-    def init_hidden(self):
-        return ( autograd.Variable( torch.zeros(2, 1, self.hidden_dim/2)),
-                 autograd.Variable( torch.zeros(2, 1, self.hidden_dim/2)) )
-
+        self.word_embeds.weight.requires_grad = not self.freeze
 
 
     def _get_lstm_features(self, dropout, **sentence):
-        self.hidden = self.init_hidden()
         input_words = sentence['input_words']
         embeds = self.word_embeds(input_words)
         if self.lower:
@@ -64,7 +57,7 @@ class BiLSTM_CRF(nn.Module):
         #if dropout:
         #    embeds = self.dropout(embeds)
 
-        lstm_out, self.hidden = self.lstm(embeds.view(len(input_words), 1, -1), self.hidden)
+        lstm_out, _ = self.lstm(embeds.view(len(input_words), 1, -1))
         lstm_out = lstm_out.view(len(input_words), self.hidden_dim)
         lstm_feats = self.hidden2tag(lstm_out)
         return lstm_feats

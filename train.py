@@ -58,6 +58,10 @@ optparser.add_option(
     "-c", "--clip", default=5.0,
     help="gradient clipping l2 norm"
 )
+optparser.add_option(
+    "-f", "--freeze", default=False,
+    help="Wheter freeze the embedding layer or not"
+)
 opts = optparser.parse_args()[0]
 
 # Parse parameters
@@ -93,6 +97,7 @@ Model_parameters['tagset_size'] = tagset_size
 Model_parameters['lower'] = opts.lower == 1
 Model_parameters['decode_method'] = opts.decode_method
 Model_parameters['loss_function'] = opts.loss_function
+Model_parameters['freeze'] = opts.freeze
 
 
 #model = LstmModel.LSTMTagger(Model_parameters)
