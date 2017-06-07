@@ -31,7 +31,7 @@ optparser.add_option(
     type='int', help="Replace digits with 0"
 )
 optparser.add_option(
-    "-p", "--pre_emb", default=None,#'embedding/glove.6B.100d.txt',
+    "-p", "--pre_emb", default='embedding/glove.6B.100d.txt',
     help="Location of pretrained embeddings"
 )
 optparser.add_option(
@@ -97,7 +97,7 @@ Model_parameters['loss_function'] = opts.loss_function
 
 #model = LstmModel.LSTMTagger(Model_parameters)
 model = LstmCrfModel.BiLSTM_CRF(Model_parameters)
-optimizer = optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-4)
+optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=1e-4)
 
 # If using pre-train, we need to initialize word-embedding layer
 if opts.pre_emb:
@@ -106,8 +106,8 @@ if opts.pre_emb:
 	  					  opts.pre_emb, opts.embedding_dim)
 	  model.init_word_embedding(initial_matrix)
 
-n_epochs = 10 # number of epochs over the training set
-Division = 1
+n_epochs = 20 # number of epochs over the training set
+Division = 2
 accuracys = []
 precisions = []
 recalls = []

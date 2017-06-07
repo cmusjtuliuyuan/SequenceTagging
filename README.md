@@ -26,3 +26,7 @@ The maximum labelwise accuracy part is done.
 Split LSTMCRF into two models. Add CRF module.
 
 Add some hand engineer.
+
+The none-pretrain SGD F1 score ~ 88.5
+
+The pretrain SGD F1 score ~ 91.2
