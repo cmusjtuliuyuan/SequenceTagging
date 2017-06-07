@@ -127,7 +127,7 @@ def punctuation_feature(s):
         return 1
 
 
-def prepare_dataset(sentences, word_to_id, tag_to_id, lower=False):
+def prepare_dataset(sentences, word_to_id, tag_to_id, lower=False, supervised = True):
     """
     Prepare the dataset. Return a list of lists of dictionaries containing:
         - word indexes
@@ -140,11 +140,9 @@ def prepare_dataset(sentences, word_to_id, tag_to_id, lower=False):
         words = [word_to_id[f(w) if f(w) in word_to_id else '<UNK>']
                  for w in str_words]
         caps = [cap_feature(w) for w in str_words]
-        pos = [w[1] for w in s]
         letter_digits = [letter_digit_feature(w) for w in str_words]
         apostrophe_ends = [apostrophe_end_feature(w) for w in str_words]
         punctuations = [punctuation_feature(w) for w in str_words]
-        tags = [tag_to_id[w[-1]] for w in s]
         data.append({
             'str_words': str_words,
             'words': words,
@@ -152,9 +150,14 @@ def prepare_dataset(sentences, word_to_id, tag_to_id, lower=False):
             'letter_digits': letter_digits,
             'apostrophe_ends': apostrophe_ends,
             'punctuations': punctuations,
-            'pos': pos,
-            'tags': tags,
         })
+        if supervised:
+            pos = [w[1] for w in s]
+            tags = [tag_to_id[w[-1]] for w in s]
+            data.append({
+                'pos': pos,
+                'tags': tags,
+                })
     return data
 
 def prepare_dictionaries(parameters):
@@ -188,7 +191,7 @@ def prepare_dictionaries(parameters):
 
     return dictionaries
 
-def load_dataset(parameters, path, dictionaries):
+def load_dataset(parameters, path, dictionaries, supervised = True):
     # Data parameters
     lower = parameters['lower']
     zeros = parameters['zeros']
@@ -196,7 +199,7 @@ def load_dataset(parameters, path, dictionaries):
     # Load sentences
     sentences = load_sentences(path, zeros)
     dataset = prepare_dataset(
-        sentences, dictionaries['word_to_id'], dictionaries['tag_to_id'], lower
+        sentences, dictionaries['word_to_id'], dictionaries['tag_to_id'], lower, supervised
     )
     print("%i sentences in %s ."%(len(dataset), path))
     return dataset
