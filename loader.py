@@ -154,10 +154,9 @@ def prepare_dataset(sentences, word_to_id, tag_to_id, lower=False, supervised = 
         if supervised:
             pos = [w[1] for w in s]
             tags = [tag_to_id[w[-1]] for w in s]
-            data.append({
-                'pos': pos,
-                'tags': tags,
-                })
+            data[-1]['pos']=pos;
+            data[-1]['tags']=tags;
+    print(data[0].keys())
     return data
 
 def prepare_dictionaries(parameters):
