@@ -9,6 +9,7 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 from utils import evaluate, plot_result, save_model_dictionaries
+import cPickle
 np.random.seed(15213)
 torch.manual_seed(15213)
 
@@ -66,6 +67,10 @@ optparser.add_option(
     "-s", "--save", default='model',
     help="Model and dictionareis stored postition"
 )
+optparser.add_option(
+    "--load", default=None,
+    help="Load pre-trained Model and dictionaries"
+)
 opts = optparser.parse_args()[0]
 
 # Parse parameters
@@ -85,7 +90,13 @@ if opts.pre_emb:
     assert opts.lower == 1
 
 # load datasets
-dictionaries = prepare_dictionaries(Parse_parameters)
+if not opts.load:
+    dictionaries = prepare_dictionaries(Parse_parameters)
+else:
+    with open(opts.load+'/dictionaries.dic', 'rb') as f:
+        dictionaries = cPickle.load(f)
+
+
 tagset_size = len(dictionaries['tag_to_id'])
 
 train_data = load_dataset(Parse_parameters, opts.train, dictionaries)
@@ -109,11 +120,15 @@ model = LstmCrfModel.BiLSTM_CRF(Model_parameters)
 optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=1e-4)
 
 # If using pre-train, we need to initialize word-embedding layer
-if opts.pre_emb:
-	  print("Initialize the word-embedding layer")
-	  initial_matrix = get_word_embedding_matrix(dictionaries['word_to_id'], 
-	  					  opts.pre_emb, opts.embedding_dim)
-	  model.init_word_embedding(initial_matrix)
+if opts.pre_emb and not opts.load:
+    print("Initialize the word-embedding layer")
+    initial_matrix = get_word_embedding_matrix(dictionaries['word_to_id'], 
+                opts.pre_emb, opts.embedding_dim)
+    model.init_word_embedding(initial_matrix)
+
+# Load pre-trained model
+if opts.load:
+  model.load_state_dict(torch.load(opts.load+'/model.mdl'))
 
 n_epochs = 20 # number of epochs over the training set
 Division = 2
@@ -169,7 +184,7 @@ for epoch in xrange(n_epochs): # again, normally you would NOT do 300 epochs, it
         loss.backward()
         nn.utils.clip_grad_norm(model.parameters(), opts.clip)
         optimizer.step()
-			
+
     print("Epoch %i, cost average: %f" % (epoch, np.mean(epoch_costs)))
 
 # Final Evaluation after training

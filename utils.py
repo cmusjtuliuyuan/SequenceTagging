@@ -125,6 +125,6 @@ def save_model_dictionaries(path, model, dictionaries):
     We need to save the mappings if we want to use the model later.
     """
     print("Model is saved in:"+path)
-    with open(path+'/dictonaries.dic', 'wb') as f:
+    with open(path+'/dictionaries.dic', 'wb') as f:
         cPickle.dump(dictionaries, f)
     torch.save(model.state_dict(), path+'/model.mdl')
