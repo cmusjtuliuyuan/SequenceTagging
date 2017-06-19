@@ -6,6 +6,8 @@ import torch.autograd as autograd
 import codecs
 import numpy as np
 import matplotlib.pyplot as plt
+import cPickle
+
 
 def create_dico(item_list):
     """
@@ -117,3 +119,12 @@ def plot_result(accuracys, precisions, recalls, FB1s):
     plt.grid(True)
     plt.legend()
     plt.show()
+
+def save_model_dictionaries(path, model, dictionaries):
+    """
+    We need to save the mappings if we want to use the model later.
+    """
+    print("Model is saved in:"+path)
+    with open(path+'/dictonaries.dic', 'wb') as f:
+        cPickle.dump(dictionaries, f)
+    torch.save(model.state_dict(), path+'/model.mdl')

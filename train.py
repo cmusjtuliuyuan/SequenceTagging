@@ -8,7 +8,7 @@ import torch.autograd as autograd
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from utils import evaluate, plot_result
+from utils import evaluate, plot_result, save_model_dictionaries
 np.random.seed(15213)
 torch.manual_seed(15213)
 
@@ -61,6 +61,10 @@ optparser.add_option(
 optparser.add_option(
     "-f", "--freeze", default=False,
     help="Wheter freeze the embedding layer or not"
+)
+optparser.add_option(
+    "-s", "--save", default='model',
+    help="Model and dictionareis stored postition"
 )
 opts = optparser.parse_args()[0]
 
@@ -175,6 +179,9 @@ precisions.append(eval_result['precision'])
 recalls.append(eval_result['recall'])
 FB1s.append(eval_result['FB1'])
 
+# Save model and dictionaries
+save_model_dictionaries('model', model, dictionaries)
 
+# Plot Result
 print("Plot final result")
 plot_result(accuracys, precisions, recalls, FB1s)
