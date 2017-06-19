@@ -7,6 +7,7 @@ import codecs
 import numpy as np
 import matplotlib.pyplot as plt
 import cPickle
+import json
 
 
 def create_dico(item_list):
@@ -120,7 +121,7 @@ def plot_result(accuracys, precisions, recalls, FB1s):
     plt.legend()
     plt.show()
 
-def save_model_dictionaries(path, model, dictionaries):
+def save_model_dictionaries(path, model, dictionaries, opts):
     """
     We need to save the mappings if we want to use the model later.
     """
@@ -128,3 +129,22 @@ def save_model_dictionaries(path, model, dictionaries):
     with open(path+'/dictionaries.dic', 'wb') as f:
         cPickle.dump(dictionaries, f)
     torch.save(model.state_dict(), path+'/model.mdl')
+    with open(path+'/parameters.json', 'w') as outfile:
+    	json.dump(vars(opts), outfile, sort_keys = True, indent = 4)
+
+def load_parameters(path, opts):
+    param_file = os.path.join(path, 'parameters.json')
+    with open(param_file, 'r') as file:
+        params = json.load(file)
+        # Read network architecture parameters from previously saved
+        # parameter file.
+        opts.clip = params['clip']
+        opts.decode_method = params['decode_method']
+        opts.embedding_dim = params['embedding_dim']
+        opts.freeze = params['freeze']
+        opts.hidden_dim = params['hidden_dim']
+        opts.loss_function = params['loss_function']
+        opts.lower = params['lower']
+        opts.vocab_size = params['vocab_size']
+        opts.zeros = params['zeros']
+    return opts

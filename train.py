@@ -8,8 +8,9 @@ import torch.autograd as autograd
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from utils import evaluate, plot_result, save_model_dictionaries
+from utils import evaluate, plot_result, save_model_dictionaries, load_parameters
 import cPickle
+import json
 np.random.seed(15213)
 torch.manual_seed(15213)
 
@@ -93,8 +94,11 @@ if opts.pre_emb:
 if not opts.load:
     dictionaries = prepare_dictionaries(Parse_parameters)
 else:
+    # load dictionaries
     with open(opts.load+'/dictionaries.dic', 'rb') as f:
         dictionaries = cPickle.load(f)
+    # load parameters
+    opts = load_parameters(opts.load, opts)
 
 
 tagset_size = len(dictionaries['tag_to_id'])
@@ -195,7 +199,7 @@ recalls.append(eval_result['recall'])
 FB1s.append(eval_result['FB1'])
 
 # Save model and dictionaries
-save_model_dictionaries('model', model, dictionaries)
+save_model_dictionaries('model', model, dictionaries, opts)
 
 # Plot Result
 print("Plot final result")
