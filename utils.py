@@ -3,6 +3,7 @@ import re
 import numpy as np
 import torch
 import torch.autograd as autograd
+import torch.nn as nn
 import codecs
 import numpy as np
 import matplotlib.pyplot as plt

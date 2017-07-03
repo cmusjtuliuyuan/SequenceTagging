@@ -1,3 +1,7 @@
 embedding/*
 tmp/*.txt
 *.pyc
+pytorchenv
+pytorchenv/*
+model
+model/*
