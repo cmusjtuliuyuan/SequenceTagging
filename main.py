@@ -8,7 +8,6 @@ import numpy as np
 from utils import save_model_dictionaries, load_parameters
 from train import train
 import cPickle
-import torch.multiprocessing as mp
 
 optparser = optparse.OptionParser()
 optparser.add_option(
@@ -127,17 +126,7 @@ def main():
     # Load pre-trained model
     if opts.load:
       model.load_state_dict(torch.load(opts.load+'/model.mdl'))
-    '''
-    model.share_memory() # gradients are allocated lazily, so they are not shared here
-
-    processes = []
-    for rank in range(4):
-        p = mp.Process(target=train, args=(model, Parse_parameters, opts, dictionaries))
-        p.start()
-        processes.append(p)
-    for p in processes:
-        p.join()
-    '''
+    
     train(model, Parse_parameters, opts, dictionaries)
     # Save model and dictionaries
     save_model_dictionaries('model', model, dictionaries, opts)

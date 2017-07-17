@@ -21,7 +21,7 @@ def train(model, Parse_parameters, opts, dictionaries):
 
 def train_epoch(model, train_data, opts, optimizer):
     model.train()
-    for i, index in enumerate(np.random.permutation(1000)):#len(train_data))):
+    for i, index in enumerate(np.random.permutation(len(train_data))):
             # Step 1. Remember that Pytorch accumulates gradients.  We need to clear them out
         # before each instance
         model.zero_grad()
