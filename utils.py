@@ -66,23 +66,8 @@ def evaluate(model, sentences, dictionaries, lower):
     with codecs.open(output_path, 'w', 'utf8') as f:
        for index in xrange(len(sentences)):
             #input sentence
-            input_words = autograd.Variable(torch.LongTensor(sentences[index]['words']))
-            
-            #calculate the tag score
-            if lower == 1:
-                input_caps = torch.LongTensor(sentences[index]['caps'])
-                input_letter_digits = torch.LongTensor(sentences[index]['letter_digits'])
-                input_apostrophe_ends = torch.LongTensor(sentences[index]['apostrophe_ends'])
-                input_punctuations = torch.LongTensor(sentences[index]['punctuations'])
-                tags = model.get_tags(input_words = input_words,
-                                      input_caps = input_caps,
-                                      input_letter_digits = input_letter_digits,
-                                      input_apostrophe_ends = input_apostrophe_ends,
-                                      input_punctuations = input_punctuations )
-            else:
-                tags = model.get_tags(input_words = input_words)
-
-            #tags = model.get_tags(sentence_in)
+            # get_tags doesnot support batch now!
+            tags = model.get_tags([sentences[index]])
             # get predict tags
             predict_tags = [dictionaries['id_to_tag'][tag] if (tag in dictionaries['id_to_tag']) else 'START_STOP' for tag in tags]
 

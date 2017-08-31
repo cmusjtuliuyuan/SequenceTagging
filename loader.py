@@ -72,7 +72,10 @@ def word_mapping(sentences, lower,vocabulary_size, pre_train = None):
         	  	  dico[word]=0
         	  	  
     dico['<UNK>'] = 10000000
+    # ADD <EMPTY> for batch
+    dico['<EMPTY>'] = 10000001
     word_to_id, id_to_word = create_mapping(dico, vocabulary_size)
+
     return dico, word_to_id, id_to_word
 
 
@@ -82,6 +85,8 @@ def tag_mapping(sentences):
     """
     tags = [[word[-1] for word in s] for s in sentences]
     dico = create_dico(tags)
+    # ADD <EMPTY> for batch
+    dico['<EMPTY>'] = 10000001
     tag_to_id, id_to_tag = create_mapping(dico)
     print("Found %i unique named entity tags" % (len(dico)))
     return dico, tag_to_id, id_to_tag

@@ -3,6 +3,7 @@ import os
 from collections import OrderedDict
 from loader import prepare_dictionaries, get_word_embedding_matrix
 import LstmCrfModel
+import LstmModel
 import torch
 import numpy as np
 from utils import save_model_dictionaries, load_parameters
@@ -67,6 +68,7 @@ optparser.add_option(
     help="Load pre-trained Model and dictionaries"
 )
 
+# TODO delete lower
 
 def main():
     np.random.seed(15213)
@@ -111,8 +113,8 @@ def main():
     Model_parameters['freeze'] = opts.freeze
 
 
-    #model = LstmModel.LSTMTagger(Model_parameters)
-    model = LstmCrfModel.BiLSTM_CRF(Model_parameters)
+    model = LstmModel.LSTMTagger(Model_parameters)
+    #model = LstmCrfModel.BiLSTM_CRF(Model_parameters)
     # gradients are allocated lazily, so they are not shared here
     model.share_memory()
 
