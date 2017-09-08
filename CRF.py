@@ -7,113 +7,117 @@ START_TAG = -2
 STOP_TAG = -1
 
 
-# Helper functions to make the code more readable.
-def to_scalar(var):
-    # returns a python float
-    return var.view(-1).data.tolist()[0]
-
-def argmax(vec):
-    # return the argmax as a python int
-    _, idx = torch.max(vec, 1)
-    return to_scalar(idx)
-
 # Compute log sum exp in a numerically stable way for the forward algorithm
-def log_sum_exp(vec):
-    max_score = vec[0, argmax(vec)]
-    max_score_broadcast = max_score.view(1, -1).expand(1, vec.size()[1])
-    return max_score + torch.log(torch.sum(torch.exp(vec - max_score_broadcast)))
+def log_sum_exp(vec, dim=0):
+    max, idx = torch.max(vec, dim, keepdim=True)
+    max_exp = max.expand_as(vec)
+    return max.squeeze(-1) + torch.log(torch.sum(torch.exp(vec - max_exp), dim))
+
+def sequence_mask(lens, max_len=None):
+    batch_size = lens.size(0)
+
+    if max_len is None:
+        max_len = lens.max().data[0]
+
+    ranges = torch.arange(0, max_len).long()
+    ranges = ranges.unsqueeze(0).expand(batch_size, max_len)
+    ranges = autograd.Variable(ranges)
+
+    if lens.data.is_cuda:
+        ranges = ranges.cuda()
+
+    lens_exp = lens.unsqueeze(1).expand_as(ranges)
+    mask = ranges < lens_exp
+
+    return mask
 
 class CRF(nn.Module):
 
     def __init__(self, tagset_size):
         super(CRF, self).__init__()
-        # Matrix of transition parameters.  Entry i,j is the score of transitioning *to* i *from* j.
-        self.tagset_size = tagset_size
         # We add 2 here, because of START_TAG and STOP_TAG
-        self.transitions = nn.Parameter(torch.randn(self.tagset_size+2, self.tagset_size+2))
-
-    def _forward_alg(self, feats):
-        # Do the forward algorithm to compute the partition function
-        # ADD 2 here because of START_TAG and STOP_TAG
-        init_alphas = torch.Tensor(1, self.tagset_size+2).fill_(-10000.)
-        # START_TAG has all of the score.
-        init_alphas[0][ START_TAG ] = 0.
+        self.tagset_size = tagset_size + 2
         
-        # Wrap in a variable so that we will get automatic backprop
-        forward_var = autograd.Variable(init_alphas)
-        
-        # Iterate through the sentence
-        alpha = []
-        for feat in feats:
-            alphas_t = [] # The forward variables at this timestep
-            for next_tag in xrange(self.tagset_size+2):
-                # broadcast the emission score: it is the same regardless of the previous tag
-                emit_score = feat[next_tag].view(1, -1).expand(1, self.tagset_size+2)
-                # the ith entry of trans_score is the score of transitioning to next_tag from i
-                trans_score = self.transitions[next_tag].view(1, -1)
-                # The ith entry of next_tag_var is the value for the edge (i -> next_tag)
-                # before we do log-sum-exp
-                next_tag_var = forward_var + trans_score + emit_score
-                # The forward variable for this tag is log-sum-exp of all the scores.
-                alphas_t.append(log_sum_exp(next_tag_var))
-            forward_var = torch.cat(alphas_t).view(1, -1)
-            alpha.append(forward_var)
+        self.transitions = nn.Parameter(torch.randn(self.tagset_size, self.tagset_size))
 
-        terminal_var = forward_var + self.transitions[ STOP_TAG ]
-        log_partition_Z = log_sum_exp(terminal_var)
-        log_alpha = torch.cat(alpha , 0)
-        return log_partition_Z, log_alpha
+    def _forward_alg(self, logits, lens):
+        '''
+        Arguments:
+            logits: [batch_size, max_length, tagset_size+2] FloatTensor
+            lens: [batch_size] LongTensor
+        Return:
+            partition_norm: [batch_size] LongTensor
+        borrow from: https://github.com/kaniblu/pytorch-bilstmcrf/blob/master/model.py
+        '''
+        batch_size, max_length, _ = logits.size()
+        alpha = torch.Tensor(batch_size, self.tagset_size).fill_(-10000)
+        alpha[:, START_TAG] = 0
+        alpha = autograd.Variable(alpha)
+        c_lens = lens.clone()
 
+        logits_t = logits.transpose(1,0)
+        for logit in logits_t:
+            logit_exp = logit.unsqueeze(2).expand(batch_size, self.tagset_size, self.tagset_size)
+            alpha_exp = alpha.unsqueeze(1).expand(batch_size, self.tagset_size, self.tagset_size)
+            trans_exp = self.transitions.unsqueeze(0).expand(batch_size, self.tagset_size, self.tagset_size)
+            mat = trans_exp + alpha_exp + logit_exp
+            alpha_nxt = log_sum_exp(mat, 2).squeeze(-1)
 
-    def _backward_alg(self, feats):
-        # Do the backward algorithm
-        # ADD 2 here because of START_TAG and STOP_TAG 
-        init_betas = torch.Tensor(1, self.tagset_size+2).fill_(0)
-        
-        # Wrap in a variable so that we will get automatic backprop
-        # This is beta_{T+1} vector 
-        backward_var = autograd.Variable(init_betas)
-        
-        # Iterate through the sentence
-        beta = []
+            mask = (c_lens > 0).float().unsqueeze(-1).expand_as(alpha)
+            alpha = mask * alpha_nxt + (1 - mask) * alpha
+            c_lens = c_lens - 1
 
-        # First calculate beta_{T}, because we do not have Emition_matrix{, T+1}
-        # so we need to calculate it seperately
-        betas_t = [] 
-        next_tag_var = autograd.Variable(torch.Tensor(1, self.tagset_size+2).fill_(0.))
+        alpha = alpha + self.transitions[STOP_TAG].unsqueeze(0).expand_as(alpha)
+        partition_norm = log_sum_exp(alpha, 1).squeeze(-1)
 
-        for next_tag in xrange(self.tagset_size+2):
-            # We add transition score in this way because 
-            #self.transition[:, next_tag] will not be contiguous, so we cannot use view function
-            for i, trans_val in enumerate(self.transitions[:,next_tag]):
-                next_tag_var[0,i] = backward_var[0,i]+trans_val
-            betas_t.append(log_sum_exp(next_tag_var))
-        backward_var = torch.cat(betas_t).view(1, -1)
-        beta.append(backward_var)
+        return partition_norm
+    
+    def _transition_score(self, labels, lens):
+        """
+        Arguments:
+             labels: [batch_size, seq_len] LongTensor
+             lens: [batch_size] LongTensor
+        """
+        batch_size, seq_len = labels.size()
 
-        # Second we can begin the loop
-        # became with Emition_matrix{, T}, beta_{T} to calulate beta_{T-1}
-        # slice step has to be greater than 0!!! so urgely in Pytorch
-        for j in range(len(feats), 1, -1):
-            feat = feats[j-1]
-            betas_t = []
-            #alphas_t = [] # The forward variables at this timestep
-            for next_tag in xrange(self.tagset_size+2):
+        # pad labels with <start> and <stop> indices
+        labels_ext = autograd.Variable(labels.data.new(batch_size, seq_len + 2))
+        labels_ext[:, 0] = START_TAG
+        labels_ext[:, 1:-1] = labels
+        mask = sequence_mask(lens + 1, max_len=seq_len + 2).long()
+        pad_stop = autograd.Variable(labels.data.new(1).fill_(STOP_TAG))
+        pad_stop = pad_stop.unsqueeze(-1).expand(batch_size, seq_len + 2)
+        labels_ext = (1 + (-1) * mask) * pad_stop + mask * labels_ext
+        labels = labels_ext
 
-                emit_score = feat.view(1, -1)
-                
-                next_tag_var = backward_var + emit_score
-                # 
-                for i, trans_val in enumerate(self.transitions[:,next_tag]):
-                    next_tag_var[0,i] = next_tag_var[0,i] + trans_val
+        trn = self.transitions
 
-                betas_t.append(log_sum_exp(next_tag_var))
-            backward_var = torch.cat(betas_t).view(1, -1)
-            beta.append(backward_var)
+        # obtain transition vector for each label in batch and timestep
+        # (except the last ones)
+        trn_exp = trn.unsqueeze(0).expand(batch_size, *trn.size())
+        lbl_r = labels[:, 1:]
+        lbl_rexp = lbl_r.unsqueeze(-1).expand(lbl_r.size()[0], lbl_r.size()[1],trn.size(0))
+        trn_row = torch.gather(trn_exp, 1, lbl_rexp)
 
-        log_beta = torch.cat(beta[::-1] , 0)
-        return log_beta
+        # obtain transition score from the transition vector for each label
+        # in batch and timestep (except the first ones)
+        lbl_lexp = labels[:, :-1].unsqueeze(-1)
+        trn_scr = torch.gather(trn_row, 2, lbl_lexp)
+        trn_scr = trn_scr.squeeze(-1)
 
+        mask = sequence_mask(lens + 1).float()
+        trn_scr = trn_scr * mask
+        score = trn_scr.sum(1).squeeze(-1)
+
+        return score
+
+    def get_neg_log_likilihood_loss(self, logits, labels, lens):
+        # nonegative log likelihood
+        partition_norm = self._forward_alg(logits, lens)
+        transition_score = self._transition_score(labels, lens)
+        return partition_norm - transitions_score
+
+    '''
     def _viterbi_decode(self, feats):
         backpointers = []
         
@@ -157,19 +161,11 @@ class CRF(nn.Module):
         best_path.reverse()
         return path_score, best_path
 
-    def _marginal_decode(self, feats):
-        # Use forward backward algorithm to calculate the marginal distribution
-        # Decode according to the marginal distribution.
-        _, log_alpha = self._forward_alg(feats)
-        log_beta = self._backward_alg(feats)
-        score = log_alpha+log_beta
-        _, tags = torch.max(score, 1)
-        tags = tags.view(-1).data.tolist()
-        return score, tags
 
     def forward(self, feats):
-    	score, _ = self._marginal_decode(feats)
+    	score, _ = self._viterbi_decode(feats)
     	return score
+    
 
     def _score_sentence(self, feats, tags):
         # Gives the score of a provided tag sequence
@@ -182,33 +178,4 @@ class CRF(nn.Module):
             score = score + self.transitions[tags[i+1], tags[i]] + feat[tags[i+1]]
         score = score + self.transitions[STOP_TAG, tags[-1]]
         return score
-
-    def _get_neg_log_likilihood_loss(self, feats, tags):
-        # nonegative log likelihood
-        forward_score, _ = self._forward_alg(feats)
-        gold_score = self._score_sentence(feats, tags)
-        return forward_score - gold_score
-
-
-    def _get_labelwise_loss(self, feats, tags):
-    	'''
-    	Training Conditional Random Fields for Maximum Labelwise Accuracy 
-    	Please look at this paper
-    	'''
-        # Get the marginal distribution
-        score, _ = self._marginal_decode(feats)
-        tags = tags.data.numpy()
-
-        loss = autograd.Variable(torch.Tensor([0.]))
-        Q = nn.Sigmoid()
-        for tag, log_p in zip(tags, score):
-            Pw = log_p[tag]
-            if tag == 0:
-                not_tag = log_p[1:]
-            elif tag == len(log_p) - 1:
-                not_tag = log_p[:tag]
-            else:
-                not_tag = torch.cat((log_p[:tag], log_p[tag+1:]))
-            maxPw = torch.max(not_tag)
-            loss = loss - Q(Pw - maxPw)
-        return loss
+    '''

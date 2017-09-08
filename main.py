@@ -113,8 +113,8 @@ def main():
     Model_parameters['freeze'] = opts.freeze
 
 
-    model = LstmModel.LSTMTagger(Model_parameters)
-    #model = LstmCrfModel.BiLSTM_CRF(Model_parameters)
+    #model = LstmModel.LSTMTagger(Model_parameters)
+    model = LstmCrfModel.LSTM_CRF(Model_parameters)
     # gradients are allocated lazily, so they are not shared here
     model.share_memory()
 

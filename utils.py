@@ -134,3 +134,5 @@ def load_parameters(path, opts):
         opts.vocab_size = params['vocab_size']
         opts.zeros = params['zeros']
     return opts
+
+

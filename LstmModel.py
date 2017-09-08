@@ -44,8 +44,7 @@ class LSTMTagger(nn.Module):
     def forward(self, sentences):
         # batch_size * max_length
         input_words = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'words')))
-        batch_size = input_words.size()[0]
-        max_length = input_words.size()[1]
+        batch_size, max_length = input_words.size()
         # batch_size * max_length * embedding_dim
         embeds = self.word_embeddings(input_words)
         '''

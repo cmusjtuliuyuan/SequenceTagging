@@ -9,7 +9,7 @@ from utils import evaluate
 BATCH_SIZE = 32
 LEARNING_RATE = 0.1
 EVALUATE_EVERY = 3
-NUM_EPOCH = 30
+NUM_EPOCH = 1
 
 def adjust_learning_rate(optimizer, lr, epoch):
     true_lr = lr * (0.8 ** (epoch // 5))
@@ -37,16 +37,19 @@ def train(model, Parse_parameters, opts, dictionaries):
 
 def train_epoch(model, train_data, opts, optimizer):
     sentences = []
-    for i, index in enumerate(np.random.permutation(len(train_data))):
+    for i, index in enumerate(np.random.permutation(32)):
         # Prepare batch dataset
         sentences.append(train_data[index])
         if len(sentences) == BATCH_SIZE:
+            '''
             # Train the model
             model.zero_grad()
             loss = model.get_loss(sentences)
             loss.backward()
             nn.utils.clip_grad_norm(model.parameters(), opts.clip)
             optimizer.step()
+            '''
+            model.forward(sentences)
             # Clear old batch
             sentences = []
 

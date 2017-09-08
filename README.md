@@ -4,6 +4,8 @@ DAP project, PyTorch, LSTM model
 This is for Yuan's Data Analysis Project. 
 I want to implment LSTM-CRF autoencoder in PyTorch.
 
+Please use Pytorch 0.2.0!!!
+
 The data pre-processing part is done.
 
 LSTM in PyTorch training part is done.

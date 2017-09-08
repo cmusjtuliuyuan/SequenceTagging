@@ -8,30 +8,34 @@ from CRF import CRF
 DROP_OUT = 0.5
 
 
-class BiLSTM_CRF(nn.Module):
+def sentences2padded(sentences, keyword, replace = 0):
+    # Form Batch_Size * Length
+    max_length = max([len(sentence[keyword]) for sentence in sentences])
+    def pad_seq(seq, max_length):
+        padded_seq = seq + [replace for i in range(max_length - len(seq))]
+        return padded_seq
+    padded =[pad_seq(sentence[keyword], max_length) for sentence in sentences]
+    return padded
+
+def _get_lens(sentences, keyword):
+    return [len(sentence[keyword]) for sentence in sentences]
+
+class LSTM_CRF(nn.Module):
     
     def __init__(self, parameter):
-        super(BiLSTM_CRF, self).__init__()
+        super(LSTM_CRF, self).__init__()
         self.embedding_dim = parameter['embedding_dim']
         self.hidden_dim = parameter['hidden_dim']
         self.vocab_size = parameter['vocab_size']
         self.tagset_size = parameter['tagset_size']
-        self.lower = parameter['lower']
-        self.decode_method = parameter['decode_method']
-        self.loss_function = parameter['loss_function']
         self.freeze = parameter['freeze']
         
         self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim)
-        if self.lower:
-            self.embedding_dim += sum(FEATURE_DIM.values())
-
-        self.dropout = nn.Dropout(p=DROP_OUT)
-        self.lstm = nn.LSTM(self.embedding_dim, self.hidden_dim/2, num_layers=1, bidirectional=True)
+        self.lstm = nn.LSTM(self.embedding_dim, self.hidden_dim, num_layers=1, batch_first = True)
         
         # Maps the output of the LSTM into tag space.
         # We add 2 here, because of START_TAG and STOP_TAG
         self.hidden2tag = nn.Linear(self.hidden_dim, self.tagset_size+2)
-        
         self.CRF = CRF(self.tagset_size)
 
 
@@ -40,55 +44,40 @@ class BiLSTM_CRF(nn.Module):
         self.word_embeds.weight.requires_grad = not self.freeze
 
 
-    def _get_lstm_features(self, dropout, **sentence):
-        input_words = sentence['input_words']
+    def _get_lstm_features(self, sentences):
+        # batch_size * max_length
+        input_words = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'words')))
+        # batch_size * max_length * embedding_dim
         embeds = self.word_embeds(input_words)
-        if self.lower:
-            # We first need to convert it into on-hot. Then concat it with the word_embedding layer
-            for input_features_name in ('input_caps', 'input_letter_digits',
-                                   'input_apostrophe_ends','input_punctuations'):
-                features = sentence[input_features_name]
-                input_features = torch.FloatTensor(len(features), FEATURE_DIM[input_features_name])
-                input_features.zero_()
-                input_features.scatter_(1, features.view(-1,1) ,1)
-                input_features = autograd.Variable(input_features)
-                embeds = torch.cat((embeds, input_features),1)
-
-        #if dropout:
-        #    embeds = self.dropout(embeds)
-
-        lstm_out, _ = self.lstm(embeds.view(len(input_words), 1, -1))
-        lstm_out = lstm_out.view(len(input_words), self.hidden_dim)
+        # batch_size * max_length * hidden_dim
+        lstm_out, _ = self.lstm(embeds)
+        # batch_size * max_length * (tagset_size+2)
         lstm_feats = self.hidden2tag(lstm_out)
         return lstm_feats
 
+    '''
+    def get_loss(self, sentences):
+        # Get the emission scores from the LSTM
+        feats = self._get_lstm_features(sentences)   
+        return self.CRF._get_neg_log_likilihood_loss(feats, tags)
+    '''
 
-    def get_loss(self, tags, **sentence):
+    def forward(self, sentences): # dont confuse this with _forward_alg above.
         # Get the emission scores from the BiLSTM
-        feats = self._get_lstm_features(dropout=False, **sentence)
+        feats = self._get_lstm_features(sentences)
+        lens = autograd.Variable(torch.LongTensor(_get_lens(sentences, 'words')))
+        labels = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'tags')))
+        self.CRF.get_neg_log_likilihood_loss(feats, labels, lens)
 
-        if self.loss_function == 'likelihood':
-            return self.CRF._get_neg_log_likilihood_loss(feats, tags)
-        elif self.loss_function == 'labelwise':
-            return self.CRF._get_labelwise_loss(feats, tags)
-        else:
-            print("ERROR: The parameter of loss function is wrong")
 
-    def forward(self, **sentence): # dont confuse this with _forward_alg above.
-        # Get the emission scores from the BiLSTM
-        feats = self._get_lstm_features(dropout=False, **sentence)
-        
+        '''
         # Find the best path, given the features.
-        if self.decode_method == 'marginal':
-            score, tag_seq = self.CRF._marginal_decode(feats)
-        elif self.decode_method == 'viterbi':
-            score, tag_seq = self.CRF._viterbi_decode(feats)
-        else:
-            print("Error wrong decode method")
+        score, tag_seq = self.CRF._viterbi_decode(feats)
 
         return score, tag_seq
-
-
-    def get_tags(self, **sentence):
+        '''
+    '''
+    def get_tags(self, sentences):
         score, tag_seq = self.forward(**sentence)
         return np.asarray(tag_seq).reshape((-1,))
+    '''
