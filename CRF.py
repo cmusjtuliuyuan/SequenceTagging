@@ -42,6 +42,10 @@ class CRF(nn.Module):
         self.STOP_TAG = tagset_size + 1
         # transition[i,j] means from j to i
         self.transitions = nn.Parameter(torch.randn(self.tagset_size, self.tagset_size))
+        # These two statements enforce the constraint that we never transfer
+        # to the start tag and we never transfer from the stop tag
+        self.transitions.data[self.START_TAG, :] = -10000.
+        self.transitions.data[:, self.STOP_TAG] = -10000.
 
     def _forward_alg(self, logits, lens):
         '''
@@ -77,8 +81,10 @@ class CRF(nn.Module):
     def _transition_score(self, labels, lens):
         """
         Arguments:
-             labels: [batch_size, max_length] LongTensor
-             lens: [batch_size] LongTensor
+            labels: [batch_size, max_length] LongTensor
+            lens: [batch_size] LongTensor
+        Return:
+            score: [batch_size] LongTensor
         """
         batch_size, seq_len = labels.size()
 
@@ -114,6 +120,14 @@ class CRF(nn.Module):
         return score
 
     def _emission_score(self, logits, labels, lens):
+        """
+        Arguments:
+            logits: [batch_size, max_length, tagset_size+2] FloatTensor
+            labels: [batch_size, max_length] LongTensor
+            lens: [batch_size] LongTensor
+        Return:
+            score: [batch_size] LongTensor
+        """
         labels_exp = labels.unsqueeze(-1)
         scores = torch.gather(logits, 2, labels_exp).squeeze(-1)
         mask = sequence_mask(lens).float()
@@ -123,7 +137,14 @@ class CRF(nn.Module):
         return score
         
     def get_neg_log_likilihood_loss(self, logits, labels, lens):
-        # nonegative log likelihood
+        """
+        Arguments:
+            logits: [batch_size, max_length, tagset_size+2] FloatTensor
+            labels: [batch_size, max_length] LongTensor
+            lens: [batch_size] LongTensor
+        Return:
+            loss: LongTensor
+        """
         partition_norm = self._forward_alg(logits, lens)
         transition_score = self._transition_score(labels, lens)
         emission_score = self._emission_score(logits, labels, lens)
@@ -136,8 +157,11 @@ class CRF(nn.Module):
     def viterbi_decode(self, logits, lens):
         """Borrowed from pytorch tutorial
         Arguments:
-            logits: [batch_size, seq_len, n_labels] FloatTensor
+            logits: [batch_size, max_length, n_labels] FloatTensor
             lens: [batch_size] LongTensor
+        Return:
+            scores: [batch_size] LongTensor
+            path: [batch_size, max_length] LongTensor
         """
         batch_size, max_length, _ = logits.size()
         vit = logits.data.new(batch_size, self.tagset_size).fill_(-10000.)

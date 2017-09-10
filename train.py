@@ -30,7 +30,7 @@ def train(model, Parse_parameters, opts, dictionaries):
         adjust_learning_rate(optimizer, LEARNING_RATE , epoch)
         train_epoch(model, train_data, opts, optimizer)
 
-        if epoch != 0 and (epoch+1)%EVALUATE_EVERY == 0:
+        if (epoch+1)%EVALUATE_EVERY == 0:
             evaluate(model, dev_data, dictionaries)
 
 
