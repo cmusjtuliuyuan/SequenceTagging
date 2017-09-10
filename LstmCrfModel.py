@@ -60,10 +60,9 @@ class LSTM_CRF(nn.Module):
         feats = self._get_lstm_features(sentences)
         lens = autograd.Variable(torch.LongTensor(_get_lens(sentences, 'words')))
         labels = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'tags')))   
-        batch_size = feats.size()[0]
-        loss = (1.0/batch_size) * torch.sum(self.CRF.get_neg_log_likilihood_loss(feats, labels, lens))
-    
-        return loss
+
+        return self.CRF.get_neg_log_likilihood_loss(feats, labels, lens)
+
     '''
     def forward(self, sentences): # dont confuse this with _forward_alg above.
         # Get the emission scores from the BiLSTM

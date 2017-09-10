@@ -130,7 +130,9 @@ class CRF(nn.Module):
         transition_score = self._transition_score(labels, lens)
         emission_score = self._emission_score(logits, labels, lens)
 
-        return partition_norm - emission_score - transition_score
+        batch_size = logits.size()[0]
+        score = partition_norm - emission_score - transition_score
+        return  (1.0 / batch_size) * torch.sum(score)
 
 
     '''
