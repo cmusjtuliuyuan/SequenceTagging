@@ -80,10 +80,4 @@ class LSTM_CRF(nn.Module):
 
         preds = [pred[:l].tolist() for pred, l in zip(preds.data, lens.data)]
         
-        for pred in preds:
-            print pred
-        '''
-        feats = self._get_lstm_features(sentences)
-        _, path = self.CRF._viterbi_decode_old(feats[0])
-        print path
-        '''
+        return preds

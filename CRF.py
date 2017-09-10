@@ -161,7 +161,7 @@ class CRF(nn.Module):
             vit = mask * vit_nxt + (1 - mask) * vit
 
             mask = (c_lens == 1).float().unsqueeze(-1).expand_as(vit_nxt)
-            vit = vit + mask* self.transitions[ self.STOP_TAG ].unsqueeze(0).expand_as(vit)
+            vit += mask * self.transitions[ self.STOP_TAG ].unsqueeze(0).expand_as(vit_nxt)
 
             c_lens = c_lens - 1
 
