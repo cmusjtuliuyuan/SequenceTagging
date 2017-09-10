@@ -100,7 +100,6 @@ class CRF(nn.Module):
         lbl_rexp = lbl_r.unsqueeze(-1).expand(lbl_r.size()[0], lbl_r.size()[1],trn.size(0))
 
         trn_row = torch.gather(trn_exp, 1, lbl_rexp)
-
         
         # obtain transition score from the transition vector for each label
         # in batch and timestep (except the first ones)
@@ -123,7 +122,6 @@ class CRF(nn.Module):
 
         return score
         
-
     def get_neg_log_likilihood_loss(self, logits, labels, lens):
         # nonegative log likelihood
         partition_norm = self._forward_alg(logits, lens)
@@ -132,14 +130,60 @@ class CRF(nn.Module):
 
         batch_size = logits.size()[0]
         score = partition_norm - emission_score - transition_score
+
         return  (1.0 / batch_size) * torch.sum(score)
+    
+    def viterbi_decode(self, logits, lens):
+        """Borrowed from pytorch tutorial
+        Arguments:
+            logits: [batch_size, seq_len, n_labels] FloatTensor
+            lens: [batch_size] LongTensor
+        """
+        batch_size, max_length, _ = logits.size()
+        vit = logits.data.new(batch_size, self.tagset_size).fill_(-10000.)
+        vit[:, self.START_TAG] = 0
+        vit = autograd.Variable(vit)
+        c_lens = lens.clone()
+
+        logits_t = logits.transpose(1, 0)
+        pointers = []
+        for logit in logits_t:
+            vit_exp = vit.unsqueeze(1).expand(batch_size, self.tagset_size, self.tagset_size)
+            trn_exp = self.transitions.unsqueeze(0).expand(batch_size, self.tagset_size, self.tagset_size)
+            vit_trn_sum = vit_exp + trn_exp
+            vt_max, vt_argmax = vit_trn_sum.max(2, keepdim=True)
+
+            vt_max = vt_max.squeeze(-1)
+            vit_nxt = vt_max + logit
+            pointers.append(vt_argmax.squeeze(-1).unsqueeze(0))
+
+            mask = (c_lens > 0).float().unsqueeze(-1).expand_as(vit_nxt)
+            vit = mask * vit_nxt + (1 - mask) * vit
+
+            mask = (c_lens == 1).float().unsqueeze(-1).expand_as(vit_nxt)
+            vit = vit + mask* self.transitions[ self.STOP_TAG ].unsqueeze(0).expand_as(vit)
+
+            c_lens = c_lens - 1
+
+        pointers = torch.cat(pointers)
+        scores, idx = vit.max(1, keepdim = True)
+        idx = idx.squeeze(-1)
+        paths = [idx.unsqueeze(1)]
+
+        for argmax in reversed(pointers):
+            idx_exp = idx.unsqueeze(-1)
+            idx = torch.gather(argmax, 1, idx_exp)
+            idx = idx.squeeze(-1)
+
+            paths.insert(0, idx.unsqueeze(1))
+
+        paths = torch.cat(paths[1:], 1)
+        scores = scores.squeeze(-1)
+
+        return scores, paths
 
 
     '''
-    def _viterbi_decode(self, feats):
-        pass
-
-
     def forward(self, feats):
     	score, _ = self._viterbi_decode(feats)
     	return score

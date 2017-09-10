@@ -17,7 +17,7 @@ def sentences2padded(sentences, keyword, replace = 0):
     padded =[pad_seq(sentence[keyword], max_length) for sentence in sentences]
     return padded
 
-def _get_lens(sentences, keyword):
+def get_lens(sentences, keyword):
     return [len(sentence[keyword]) for sentence in sentences]
 
 class LSTM_CRF(nn.Module):
@@ -58,7 +58,7 @@ class LSTM_CRF(nn.Module):
     def get_loss(self, sentences):
         # Get the emission scores from the LSTM
         feats = self._get_lstm_features(sentences)
-        lens = autograd.Variable(torch.LongTensor(_get_lens(sentences, 'words')))
+        lens = autograd.Variable(torch.LongTensor(get_lens(sentences, 'words')))
         labels = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'tags')))   
 
         return self.CRF.get_neg_log_likilihood_loss(feats, labels, lens)
@@ -70,9 +70,20 @@ class LSTM_CRF(nn.Module):
         lens = autograd.Variable(torch.LongTensor(_get_lens(sentences, 'words')))
         labels = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'tags')))
         self.CRF.get_neg_log_likilihood_loss(feats, labels, lens)
-
+    '''
 
     def get_tags(self, sentences):
-        score, tag_seq = self.forward(**sentence)
-        return np.asarray(tag_seq).reshape((-1,))
-    '''
+        
+        feats = self._get_lstm_features(sentences)
+        lens = autograd.Variable(torch.LongTensor(get_lens(sentences, 'words')))
+        _, preds = self.CRF.viterbi_decode(feats, lens)
+
+        preds = [pred[:l].tolist() for pred, l in zip(preds.data, lens.data)]
+        
+        for pred in preds:
+            print pred
+        '''
+        feats = self._get_lstm_features(sentences)
+        _, path = self.CRF._viterbi_decode_old(feats[0])
+        print path
+        '''
