@@ -20,6 +20,11 @@ def sentences2padded(sentences, keyword, replace = 0):
 def get_lens(sentences, keyword):
     return [len(sentence[keyword]) for sentence in sentences]
 
+def selu(x):
+    alpha = 1.6732632423543772848170429916717
+    scale = 1.0507009873554804934193349852946
+    return scale * F.elu(x, alpha)
+
 class LSTM_CRF(nn.Module):
     
     def __init__(self, parameter):
@@ -49,10 +54,12 @@ class LSTM_CRF(nn.Module):
         input_words = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'words')))
         # batch_size * max_length * embedding_dim
         embeds = self.word_embeds(input_words)
+        embeds = selu(embeds)
         # batch_size * max_length * hidden_dim
         lstm_out, _ = self.lstm(embeds)
         # batch_size * max_length * (tagset_size+2)
         lstm_feats = self.hidden2tag(lstm_out)
+        lstm_feats = selu(lstm_feats)
         return lstm_feats
 
     def get_loss(self, sentences):
