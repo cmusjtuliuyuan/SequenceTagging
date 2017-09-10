@@ -55,13 +55,16 @@ class LSTM_CRF(nn.Module):
         lstm_feats = self.hidden2tag(lstm_out)
         return lstm_feats
 
-    '''
     def get_loss(self, sentences):
         # Get the emission scores from the LSTM
-        feats = self._get_lstm_features(sentences)   
-        return self.CRF._get_neg_log_likilihood_loss(feats, tags)
+        feats = self._get_lstm_features(sentences)
+        lens = autograd.Variable(torch.LongTensor(_get_lens(sentences, 'words')))
+        labels = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'tags')))   
+        batch_size = feats.size()[0]
+        loss = (1.0/batch_size) * torch.sum(self.CRF.get_neg_log_likilihood_loss(feats, labels, lens))
+    
+        return loss
     '''
-
     def forward(self, sentences): # dont confuse this with _forward_alg above.
         # Get the emission scores from the BiLSTM
         feats = self._get_lstm_features(sentences)
@@ -70,13 +73,6 @@ class LSTM_CRF(nn.Module):
         self.CRF.get_neg_log_likilihood_loss(feats, labels, lens)
 
 
-        '''
-        # Find the best path, given the features.
-        score, tag_seq = self.CRF._viterbi_decode(feats)
-
-        return score, tag_seq
-        '''
-    '''
     def get_tags(self, sentences):
         score, tag_seq = self.forward(**sentence)
         return np.asarray(tag_seq).reshape((-1,))

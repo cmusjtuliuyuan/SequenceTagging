@@ -32,7 +32,7 @@ def sequence_mask(lens, max_len=None):
 
 class CRF(nn.Module):
     '''
-    borrow from: https://github.com/kaniblu/pytorch-bilstmcrf/blob/master/model.py
+    Thanks, kaniblu!
     '''
     def __init__(self, tagset_size):
         super(CRF, self).__init__()
@@ -52,7 +52,7 @@ class CRF(nn.Module):
             partition_norm: [batch_size] LongTensor
         '''
         batch_size, max_length, _ = logits.size()
-        alpha = torch.Tensor(batch_size, self.tagset_size).fill_(-10000)
+        alpha = torch.Tensor(batch_size, self.tagset_size).fill_(-10000.)
         alpha[:, self.START_TAG] = 0
         alpha = autograd.Variable(alpha)
         c_lens = lens.clone()
@@ -90,14 +90,13 @@ class CRF(nn.Module):
         pad_stop = autograd.Variable(labels.data.new(1).fill_(self.STOP_TAG))
         pad_stop = pad_stop.unsqueeze(-1).expand(batch_size, seq_len + 2)
         labels_ext = (1 + (-1) * mask) * pad_stop + mask * labels_ext
-        labels = labels_ext
         
         trn = self.transitions
 
         # obtain transition vector for each label in batch and timestep
         # (except the last ones)
         trn_exp = trn.unsqueeze(0).expand(batch_size, *trn.size())
-        lbl_r = labels[:, 1:]
+        lbl_r = labels_ext[:, 1:]
         lbl_rexp = lbl_r.unsqueeze(-1).expand(lbl_r.size()[0], lbl_r.size()[1],trn.size(0))
 
         trn_row = torch.gather(trn_exp, 1, lbl_rexp)
@@ -105,7 +104,7 @@ class CRF(nn.Module):
         
         # obtain transition score from the transition vector for each label
         # in batch and timestep (except the first ones)
-        lbl_lexp = labels[:, :-1].unsqueeze(-1)
+        lbl_lexp = labels_ext[:, :-1].unsqueeze(-1)
         trn_scr = torch.gather(trn_row, 2, lbl_lexp)
         trn_scr = trn_scr.squeeze(-1)
 
@@ -130,7 +129,9 @@ class CRF(nn.Module):
         partition_norm = self._forward_alg(logits, lens)
         transition_score = self._transition_score(labels, lens)
         emission_score = self._emission_score(logits, labels, lens)
-        return partition_norm + emission_score - transition_score
+
+        return partition_norm - emission_score - transition_score
+
 
     '''
     def _viterbi_decode(self, feats):

@@ -1,10 +1,13 @@
 # SequenceTagging
-DAP project, PyTorch, LSTM model
+DAP project, PyTorch, LSTM CRF model
+
+Support Mini-batch now
 
 This is for Yuan's Data Analysis Project. 
 I want to implment LSTM-CRF autoencoder in PyTorch.
 
 Please use Pytorch 0.2.0!!!
+Thanks: https://github.com/kaniblu/pytorch-bilstmcrf https://github.com/spro/practical-pytorch https://github.com/rguthrie3/DeepLearningForNLPInPytorch https://github.com/glample/tagger My code is based on them. 
 
 The data pre-processing part is done.
 

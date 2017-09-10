@@ -44,14 +44,6 @@ optparser.add_option(
     type='int', help="LSTM hidden dimension"
 )
 optparser.add_option(
-    "-t", "--decode_method", default="viterbi",
-    help="Choose viterbi or marginal to decode the output tag"
-)
-optparser.add_option(
-    "-o", "--loss_function", default="likelihood",
-    help="Choose likelihood or labelwise to determine the loss function"
-)
-optparser.add_option(
     "-c", "--clip", default=5.0,
     help="gradient clipping l2 norm"
 )
@@ -107,9 +99,6 @@ def main():
     Model_parameters['embedding_dim'] = opts.embedding_dim
     Model_parameters['hidden_dim'] = opts.hidden_dim
     Model_parameters['tagset_size'] = len(dictionaries['tag_to_id'])
-    Model_parameters['lower'] = opts.lower == 1
-    Model_parameters['decode_method'] = opts.decode_method
-    Model_parameters['loss_function'] = opts.loss_function
     Model_parameters['freeze'] = opts.freeze
 
 

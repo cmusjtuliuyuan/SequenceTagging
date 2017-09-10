@@ -36,22 +36,26 @@ def train(model, Parse_parameters, opts, dictionaries):
 
 
 def train_epoch(model, train_data, opts, optimizer):
+    def train_batch(model, sentences, opts, optimizer):
+        model.zero_grad()
+        loss = model.get_loss(sentences)
+        loss.backward()
+        #print loss.data
+        nn.utils.clip_grad_norm(model.parameters(), opts.clip)
+        optimizer.step()
+
     sentences = []
-    for i, index in enumerate(np.random.permutation(32)):
+    for i, index in enumerate(np.random.permutation(len(train_data))):
         # Prepare batch dataset
         sentences.append(train_data[index])
         if len(sentences) == BATCH_SIZE:
-            '''
             # Train the model
-            model.zero_grad()
-            loss = model.get_loss(sentences)
-            loss.backward()
-            nn.utils.clip_grad_norm(model.parameters(), opts.clip)
-            optimizer.step()
-            '''
-            model.forward(sentences)
+            train_batch(model, sentences, opts, optimizer)
             # Clear old batch
             sentences = []
+
+    if len(sentences) != 0:
+        train_batch(model, sentences, opts, optimizer)
 
 
 def eval_epoch(model, dev_data, dictionaries, opts):
