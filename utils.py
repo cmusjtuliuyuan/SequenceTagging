@@ -56,42 +56,6 @@ def zero_digits(s):
     """
     return re.sub('\d', '0', s)
 
-def evaluate(model, sentences, dictionaries, lower):
-    """
-    Evaluate current model using CoNLL script.
-    """
-    output_path = 'tmp/evaluate.txt'
-    scores_path = 'tmp/score.txt'
-    eval_script = './tmp/conlleval'
-    with codecs.open(output_path, 'w', 'utf8') as f:
-       for index in xrange(len(sentences)):
-            #input sentence
-            # get_tags doesnot support batch now!
-            tags = model.get_tags([sentences[index]])
-            # get predict tags
-            predict_tags = [dictionaries['id_to_tag'][tag] if (tag in dictionaries['id_to_tag']) else 'START_STOP' for tag in tags]
-
-            # get true tags
-            true_tags = [dictionaries['id_to_tag'][tag] for tag in sentences[index]['tags']]
-
-            # write words pos true_tag predict_tag into a file
-            for word, pos, true_tag, predict_tag in zip(sentences[index]['str_words'], 
-                                                        sentences[index]['pos'],
-                                                        true_tags, predict_tags):
-                f.write('%s %s %s %s\n' % (word, pos ,true_tag, predict_tag))
-            f.write('\n')
-
-    os.system("%s < %s > %s" % (eval_script, output_path, scores_path))
-    eval_lines = [l.rstrip() for l in codecs.open(scores_path, 'r', 'utf8')]
-    result={
-       'accuracy' : float(eval_lines[1].strip().split()[1][:-2]),
-       'precision': float(eval_lines[1].strip().split()[3][:-2]),
-       'recall': float(eval_lines[1].strip().split()[5][:-2]),
-       'FB1': float(eval_lines[1].strip().split()[7])
-    }
-    print(eval_lines[1])
-    return result
-
 def plot_result(accuracys, precisions, recalls, FB1s):
     plt.figure()
     plt.plot(accuracys,"g-",label="accuracy")
