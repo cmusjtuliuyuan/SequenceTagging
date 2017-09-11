@@ -6,7 +6,12 @@ import numpy as np
 from loader import FEATURE_DIM
 from CRF import CRF
 DROP_OUT = 0.5
-
+FEATURE_DIM = {
+    'caps': 4,
+    'letter_digits': 4,
+    'apostrophe_ends': 2,
+    'punctuations': 2,
+}
 
 def sentences2padded(sentences, keyword, replace = 0):
     # Form Batch_Size * Length
@@ -36,7 +41,8 @@ class LSTM_CRF(nn.Module):
         self.freeze = parameter['freeze']
         
         self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim)
-        self.lstm = nn.LSTM(self.embedding_dim, self.hidden_dim, num_layers=1, batch_first = True)
+        self.lstm = nn.LSTM(self.embedding_dim + sum(FEATURE_DIM.values()), 
+                self.hidden_dim, num_layers=1, batch_first = True)
         
         # Maps the output of the LSTM into tag space.
         # We add 2 here, because of START_TAG and STOP_TAG
@@ -54,7 +60,7 @@ class LSTM_CRF(nn.Module):
         input_words = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'words')))
         # batch_size * max_length * embedding_dim
         embeds = self.word_embeds(input_words)
-        embeds = selu(embeds)
+        embeds = self.hand_engineer_concat(sentences, embeds)
         # batch_size * max_length * hidden_dim
         lstm_out, _ = self.lstm(embeds)
         # batch_size * max_length * (tagset_size+2)
@@ -88,3 +94,28 @@ class LSTM_CRF(nn.Module):
         preds = [pred[:l].tolist() for pred, l in zip(preds.data, lens.data)]
         
         return preds
+
+
+    def hand_engineer_concat(self, sentences, embeds):
+
+        def hand_engineer_concat_kernel(sentences, embeds, keyword, num_dim):
+            # batch_size * max_length      
+            hand_feature = torch.LongTensor(sentences2padded(sentences, keyword)).contiguous()
+            batch_size, max_length = hand_feature.size()
+            # (batch_size * max_length) * CAP_DIM     
+            input_hand_feature = torch.FloatTensor(batch_size * max_length, num_dim)      
+            input_hand_feature.zero_()        
+            # batch_size * max_length * CAP_DIM       
+            input_hand_feature = input_hand_feature.scatter_(1, 
+                hand_feature.view(-1, 1), 1).view(hand_feature.size()[0], hand_feature.size()[1], num_dim)        
+            input_hand_feature = autograd.Variable(input_hand_feature)        
+            embeds = torch.cat((embeds, input_hand_feature), 2)
+
+            return embeds
+
+        for input_features_name in ('caps', 'letter_digits',
+                                       'apostrophe_ends','punctuations'):
+            embeds = hand_engineer_concat_kernel(sentences, embeds, 
+                                input_features_name, FEATURE_DIM[input_features_name])
+
+        return embeds

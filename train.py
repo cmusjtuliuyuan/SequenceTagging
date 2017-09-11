@@ -10,11 +10,11 @@ import os
 
 BATCH_SIZE = 32
 LEARNING_RATE = 0.1
-EVALUATE_EVERY = 1
-NUM_EPOCH = 3
+EVALUATE_EVERY = 3
+NUM_EPOCH = 30
 
 def adjust_learning_rate(optimizer, lr, epoch):
-    true_lr = lr * (0.8 ** (epoch // 5))
+    true_lr = lr * (0.5 ** (epoch // 5))
     for param_group in optimizer.param_groups:
         param_group['lr'] = true_lr
 
@@ -24,13 +24,13 @@ def train(model, Parse_parameters, opts, dictionaries):
     dev_data = load_dataset(Parse_parameters, opts.dev, dictionaries)
     optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE)
     
-    for epoch in xrange(NUM_EPOCH): 
+    for epoch in xrange(1, NUM_EPOCH+1): 
         print("Trian epoch: %d"%(epoch))
 
         adjust_learning_rate(optimizer, LEARNING_RATE , epoch)
         train_epoch(model, train_data, opts, optimizer)
 
-        if (epoch+1)%EVALUATE_EVERY == 0:
+        if epoch % EVALUATE_EVERY == 0:
             evaluate(model, dev_data, dictionaries)
 
 
