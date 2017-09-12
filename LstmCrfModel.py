@@ -3,7 +3,6 @@ import torch.autograd as autograd
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from loader import FEATURE_DIM
 from CRF import CRF
 DROP_OUT = 0.5
 FEATURE_DIM = {
@@ -41,7 +40,9 @@ class LSTM_CRF(nn.Module):
         self.freeze = parameter['freeze']
         
         self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim)
-        self.lstm = nn.LSTM(self.embedding_dim + sum(FEATURE_DIM.values()), 
+        # Ignore hand engineer now
+        #self.lstm = nn.LSTM(self.embedding_dim + sum(FEATURE_DIM.values()), 
+        self.lstm = nn.LSTM(self.embedding_dim,
                 self.hidden_dim, num_layers=1, batch_first = True)
         
         # Maps the output of the LSTM into tag space.
@@ -60,7 +61,10 @@ class LSTM_CRF(nn.Module):
         input_words = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'words')))
         # batch_size * max_length * embedding_dim
         embeds = self.word_embeds(input_words)
-        embeds = self.hand_engineer_concat(sentences, embeds)
+        # Remove softmax layer
+        #embeds = F.softmax(embeds.view(-1, self.embedding_dim)).view(*embeds.size())
+        # Ignore hand engineer now
+        #embeds = self.hand_engineer_concat(sentences, embeds)
         # batch_size * max_length * hidden_dim
         lstm_out, _ = self.lstm(embeds)
         # batch_size * max_length * (tagset_size+2)
@@ -76,14 +80,12 @@ class LSTM_CRF(nn.Module):
 
         return self.CRF.get_neg_log_likilihood_loss(feats, labels, lens)
 
-    '''
+
     def forward(self, sentences): # dont confuse this with _forward_alg above.
         # Get the emission scores from the BiLSTM
         feats = self._get_lstm_features(sentences)
-        lens = autograd.Variable(torch.LongTensor(_get_lens(sentences, 'words')))
-        labels = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'tags')))
-        self.CRF.get_neg_log_likilihood_loss(feats, labels, lens)
-    '''
+        self.CRF.forward(feats)
+
 
     def get_tags(self, sentences):
         
