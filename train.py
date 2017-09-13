@@ -18,7 +18,6 @@ def adjust_learning_rate(optimizer, lr, epoch):
     for param_group in optimizer.param_groups:
         param_group['lr'] = true_lr
 
-
 def train(model, Parse_parameters, opts, dictionaries):
     train_data = load_dataset(Parse_parameters, opts.train, dictionaries)
     dev_data = load_dataset(Parse_parameters, opts.dev, dictionaries)
@@ -38,7 +37,7 @@ def train_epoch(model, train_data, opts, optimizer):
 
     def train_batch(model, sentences, opts, optimizer):
         model.zero_grad()
-        loss = model.get_loss(sentences)
+        loss = model.get_loss_supervised(sentences)
         loss.backward()
         #print loss.data
         nn.utils.clip_grad_norm(model.parameters(), opts.clip)

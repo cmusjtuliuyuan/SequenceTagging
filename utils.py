@@ -99,4 +99,16 @@ def load_parameters(path, opts):
         opts.zeros = params['zeros']
     return opts
 
+def sentences2padded(sentences, keyword, replace = 0):
+    # Form Batch_Size * Length
+    max_length = max([len(sentence[keyword]) for sentence in sentences])
+    def pad_seq(seq, max_length):
+        padded_seq = seq + [replace for i in range(max_length - len(seq))]
+        return padded_seq
+    padded =[pad_seq(sentence[keyword], max_length) for sentence in sentences]
+    return padded
+
+def get_lens(sentences, keyword):
+    return [len(sentence[keyword]) for sentence in sentences]
+
 

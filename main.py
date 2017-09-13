@@ -4,6 +4,7 @@ from collections import OrderedDict
 from loader import prepare_dictionaries, get_word_embedding_matrix
 import LstmCrfModel
 import LstmModel
+import Autoencoder
 import torch
 import numpy as np
 from utils import save_model_dictionaries, load_parameters
@@ -28,7 +29,7 @@ optparser.add_option(
     type='int', help="Replace digits with 0"
 )
 optparser.add_option(
-    "-p", "--pre_emb", default=None,#'embedding/glove.6B.100d.txt',
+    "-p", "--pre_emb", default='embedding/glove.6B.100d.txt',
     help="Location of pretrained embeddings"
 )
 optparser.add_option(
@@ -103,7 +104,7 @@ def main():
 
 
     #model = LstmModel.LSTMTagger(Model_parameters)
-    model = LstmCrfModel.LSTM_CRF(Model_parameters)
+    model = Autoencoder.Autoencoder(Model_parameters)
     # gradients are allocated lazily, so they are not shared here
     model.share_memory()
 
