@@ -2,8 +2,6 @@ import optparse
 import os
 from collections import OrderedDict
 from loader import prepare_dictionaries, get_word_embedding_matrix
-import LstmCrfModel
-import LstmModel
 import Autoencoder
 import torch
 import numpy as np
@@ -29,7 +27,7 @@ optparser.add_option(
     type='int', help="Replace digits with 0"
 )
 optparser.add_option(
-    "-p", "--pre_emb", default='embedding/glove.6B.100d.txt',
+    "-p", "--pre_emb", default= None,#'embedding/glove.6B.100d.txt',
     help="Location of pretrained embeddings"
 )
 optparser.add_option(
