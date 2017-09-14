@@ -3,7 +3,6 @@ import os
 from collections import OrderedDict
 from loader import prepare_dictionaries, get_word_embedding_matrix
 import LstmCrfModel
-import LstmModel
 import torch
 import numpy as np
 from utils import save_model_dictionaries, load_parameters
