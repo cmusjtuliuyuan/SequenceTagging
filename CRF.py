@@ -3,32 +3,13 @@ import torch.autograd as autograd
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-
+from utils import sequence_mask
 
 # Compute log sum exp in a numerically stable way for the forward algorithm
 def log_sum_exp(vec, dim=0):
     max, idx = torch.max(vec, dim, keepdim=True)
     max_exp = max.expand_as(vec)
     return max.squeeze(-1) + torch.log(torch.sum(torch.exp(vec - max_exp), dim))
-
-# Return mask matrix
-def sequence_mask(lens, max_len=None):
-    batch_size = lens.size(0)
-
-    if max_len is None:
-        max_len = lens.max().data[0]
-
-    ranges = torch.arange(0, max_len).long()
-    ranges = ranges.unsqueeze(0).expand(batch_size, max_len)
-    ranges = autograd.Variable(ranges)
-
-    if lens.data.is_cuda:
-        ranges = ranges.cuda()
-
-    lens_exp = lens.unsqueeze(1).expand_as(ranges)
-    mask = ranges < lens_exp
-
-    return mask
 
 class CRF(nn.Module):
     '''
