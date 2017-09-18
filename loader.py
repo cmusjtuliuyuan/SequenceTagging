@@ -6,12 +6,6 @@ from utils import read_pre_training
 import numpy as np
 import string 
 
-FEATURE_DIM = {
-    'input_caps': 4,
-    'input_letter_digits': 4,
-    'input_apostrophe_ends': 2,
-    'input_punctuations': 2,
-}
 
 def load_sentences(path, zeros):
     """
@@ -36,25 +30,7 @@ def load_sentences(path, zeros):
             sentences.append(sentence)
     return sentences
 
-
-def check_tag_chunking(sentences):
-    """
-    Check the input format is chunking or not 
-    """
-    for i, s in enumerate(sentences):
-        tags = [w[-1] for w in s]
-        for j, tag in enumerate(tags):
-            if tag == 'O':
-                continue
-            split = tag.split('-')
-            #if len(split) != 2 or split[0] not in ['I', 'B'] \
-            #            or split[1] not in ['NP', 'VP', 'PP', 'SBAR', 'ADVP','ADJP']:
-            #    print(split)
-            #    raise Exception('Unknown tagging scheme!')
-
-
-
-def word_mapping(sentences, lower,vocabulary_size, pre_train = None):
+def word_mapping(sentences, lower, vocabulary_size, pre_train = None):
     """
     Create a dictionary and a mapping of words, sorted by frequency.
     """
@@ -87,46 +63,6 @@ def tag_mapping(sentences):
     print("Found %i unique named entity tags" % (len(dico)))
     return dico, tag_to_id, id_to_tag
 
-def cap_feature(s):
-    """
-    Capitalization feature:
-    0 = low caps
-    1 = all caps
-    2 = first letter caps
-    3 = one capital (not first letter)
-    """
-    if s.lower() == s:
-        return 0
-    elif s.upper() == s:
-        return 1
-    elif s[0].upper() == s[0]:
-        return 2
-    else:
-        return 3
-
-def letter_digit_feature(s):
-    if re.search('[a-zA-Z]',s) and re.search('[0-9]',s):
-        return 0
-    elif re.search('[a-zA-Z]',s):
-        return 1
-    elif re.search('[0-9]',s):
-        return 2
-    else:
-        return 3
-
-def apostrophe_end_feature(s):
-    if len(s)>1 and s[-2:] == "'s":
-        return 0
-    else:
-        return 1
-
-
-def punctuation_feature(s):
-    if re.search('['+string.punctuation+']', 'a'):
-        return 0
-    else: 
-        return 1
-
 
 def prepare_dataset(sentences, word_to_id, tag_to_id, lower=False, supervised = True):
     """
@@ -140,17 +76,9 @@ def prepare_dataset(sentences, word_to_id, tag_to_id, lower=False, supervised = 
         str_words = [w[0] for w in s]
         words = [word_to_id[f(w) if f(w) in word_to_id else '<UNK>']
                  for w in str_words]
-        caps = [cap_feature(w) for w in str_words]
-        letter_digits = [letter_digit_feature(w) for w in str_words]
-        apostrophe_ends = [apostrophe_end_feature(w) for w in str_words]
-        punctuations = [punctuation_feature(w) for w in str_words]
         data.append({
             'str_words': str_words,
             'words': words,
-            'caps': caps,
-            'letter_digits': letter_digits,
-            'apostrophe_ends': apostrophe_ends,
-            'punctuations': punctuations,
         })
         if supervised:
             pos = [w[1] for w in s]
@@ -168,8 +96,6 @@ def prepare_dictionaries(parameters):
 
     # Load sentences
     train_sentences = load_sentences(train_path, zeros)
-    # Use selected tagging scheme
-    check_tag_chunking(train_sentences)
 
     if parameters['pre_emb']:
         dev_sentences = load_sentences(dev_path,  zeros)
