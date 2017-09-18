@@ -200,7 +200,6 @@ class CRF(nn.Module):
         alpha_step[:, self.START_TAG] = 0
         alpha_step = autograd.Variable(alpha_step)
         alpha = autograd.Variable(torch.Tensor(batch_size, max_length, self.tagset_size))
-        c_lens = lens.clone()
 
         logits_t = logits.transpose(1,0)
         for index, logit in enumerate(logits_t):
@@ -209,6 +208,6 @@ class CRF(nn.Module):
             trans_exp = self.transitions.unsqueeze(0).expand(batch_size, self.tagset_size, self.tagset_size)
             mat = trans_exp + alpha_exp + logit_exp
             alpha_step = log_sum_exp(mat, 2).squeeze(-1)
-            alpha[:, index, :] = alpha_step.copy()
+            alpha[:, index, :] = alpha_step
 
         return alpha

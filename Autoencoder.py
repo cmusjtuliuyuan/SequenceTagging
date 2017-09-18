@@ -20,7 +20,7 @@ class Autoencoder(nn.Module):
         self.encoder = LstmCrfModel.LSTM_CRF(parameter)
         self.decoder = nn.LSTM(self.tagset_size, self.embedding_dim,
                             num_layers=1, batch_first = True)
-        self.loss_function = nn.MSELoss(size_average = True)
+
 
     def init_word_embedding(self, init_matrix):
         self.word_embeds.weight=nn.Parameter(torch.FloatTensor(init_matrix))
@@ -41,15 +41,16 @@ class Autoencoder(nn.Module):
         return loss
 
     def get_loss_unsupervised(self, sentences): # unsupervised loss
+    
         lens = autograd.Variable(torch.LongTensor(get_lens(sentences, 'words')))
         decoder_out, embeds = self.forward(sentences)
-        _, max_length, _ = embeds.size()
-        
-        mask = sequence_mask(lens)
-        decoder_out_mask = mask * decoder_out
-        embeds_mask = mask * embeds
+        batch_size, max_length, embed_dim = embeds.size()
 
-        loss = 1.0 / max_length * self.loss_function(decoder_out_mask, embeds_mask)
+        mask = sequence_mask(lens).float().unsqueeze(-1).expand_as(decoder_out)
+
+        loss_matrix = mask * (decoder_out - embeds)
+
+        loss = torch.sum(loss_matrix*loss_matrix)/(batch_size*max_length*embed_dim)
 
         return loss
 
@@ -57,13 +58,12 @@ class Autoencoder(nn.Module):
     def forward(self, sentences):
         # batch_size * max_length
         input_words = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'words')))
-        labels = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'tags')))  
         # batch_size * max_length * embedding_dim
         embeds = self.word_embeds(input_words)
         # batch_size * max_length * tagset_size+2
         encoder_out = self.encoder.forward(embeds)
         # batch_size * max_length * embedding_dim
-        decoder_out = self.decoder.forward(encoder_out)
+        decoder_out, _ = self.decoder.forward(encoder_out)
 
         return decoder_out, embeds
 

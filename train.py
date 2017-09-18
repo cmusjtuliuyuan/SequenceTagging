@@ -12,6 +12,8 @@ BATCH_SIZE = 32
 LEARNING_RATE = 0.1
 EVALUATE_EVERY = 3
 NUM_EPOCH = 30
+SUPERVISED = True
+UNSUPERVISED = False
 
 def adjust_learning_rate(optimizer, lr, epoch):
     true_lr = lr * (0.5 ** (epoch // 5))
@@ -19,6 +21,12 @@ def adjust_learning_rate(optimizer, lr, epoch):
         param_group['lr'] = true_lr
 
 def train(model, Parse_parameters, opts, dictionaries):
+    # Prepare unsupervised dataset:
+    path = 'data/wiki'
+    files = os.listdir(path)
+    # filter .DS_Store ...
+    files = [ x for x in files if not '.DS_Store' in x]
+
     train_data = load_dataset(Parse_parameters, opts.train, dictionaries)
     dev_data = load_dataset(Parse_parameters, opts.dev, dictionaries)
     optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE)
@@ -27,17 +35,30 @@ def train(model, Parse_parameters, opts, dictionaries):
         print("Trian epoch: %d"%(epoch))
 
         adjust_learning_rate(optimizer, LEARNING_RATE , epoch)
-        train_epoch(model, train_data, opts, optimizer)
 
-        if epoch % EVALUATE_EVERY == 0:
-            evaluate(model, dev_data, dictionaries)
+        # supervised train
+        train_epoch(model, train_data, opts, optimizer, SUPERVISED)
+        evaluate(model, dev_data, dictionaries)
+
+        # unsupervised train
+        unlabel_data_file_name = files[(epoch-1)%len(files)]
+        unlabel_data = load_dataset(Parse_parameters, 
+                'data/wiki/'+unlabel_data_file_name, dictionaries, UNSUPERVISED)
+        train_epoch(model, unlabel_data, opts, optimizer, UNSUPERVISED)
+        evaluate(model, dev_data, dictionaries)
+
+        #if epoch % EVALUATE_EVERY == 0:
+        #    evaluate(model, dev_data, dictionaries)
 
 
-def train_epoch(model, train_data, opts, optimizer):
+def train_epoch(model, train_data, opts, optimizer, supervised = True):
 
-    def train_batch(model, sentences, opts, optimizer):
+    def train_batch(model, sentences, opts, optimizer, supervised = True):
         model.zero_grad()
-        loss = model.get_loss_supervised(sentences)
+        if supervised:
+            loss = model.get_loss_supervised(sentences)
+        else:
+            loss = model.get_loss_unsupervised(sentences)
         loss.backward()
         #print loss.data
         nn.utils.clip_grad_norm(model.parameters(), opts.clip)
@@ -49,12 +70,12 @@ def train_epoch(model, train_data, opts, optimizer):
         sentences.append(train_data[index])
         if len(sentences) == BATCH_SIZE:
             # Train the model
-            train_batch(model, sentences, opts, optimizer)
+            train_batch(model, sentences, opts, optimizer, supervised)
             # Clear old batch
             sentences = []
 
     if len(sentences) != 0:
-        train_batch(model, sentences, opts, optimizer)
+        train_batch(model, sentences, opts, optimizer, supervised)
 
 
 def evaluate(model, dev_data, dictionaries):
