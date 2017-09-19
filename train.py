@@ -11,12 +11,12 @@ import os
 BATCH_SIZE = 32
 LEARNING_RATE = 0.1
 EVALUATE_EVERY = 3
-NUM_EPOCH = 30
+NUM_EPOCH = 600
 SUPERVISED = True
 UNSUPERVISED = False
 
 def adjust_learning_rate(optimizer, lr, epoch):
-    true_lr = lr * (0.5 ** (epoch // 5))
+    true_lr = lr * (0.9 ** (epoch // 10))
     for param_group in optimizer.param_groups:
         param_group['lr'] = true_lr
 

@@ -33,7 +33,7 @@ class LSTM_CRF(nn.Module):
         # Maps the output of the LSTM into tag space.
         # We add 2 here, because of START_TAG and STOP_TAG
         self.hidden2tag = nn.Linear(self.hidden_dim, self.tagset_size+2)
-        self.CRF = CRF(self.tagset_size)
+        self.CRF = CRF(self.tagset_size, parameter)
 
     def _get_lstm_features(self, embeds):
         # batch_size * max_length * hidden_dim
@@ -65,28 +65,3 @@ class LSTM_CRF(nn.Module):
         preds = [pred[:l].tolist() for pred, l in zip(preds.data, lens.data)]
         
         return preds
-
-
-    def hand_engineer_concat(self, sentences, embeds):
-
-        def hand_engineer_concat_kernel(sentences, embeds, keyword, num_dim):
-            # batch_size * max_length      
-            hand_feature = torch.LongTensor(sentences2padded(sentences, keyword)).contiguous()
-            batch_size, max_length = hand_feature.size()
-            # (batch_size * max_length) * CAP_DIM     
-            input_hand_feature = torch.FloatTensor(batch_size * max_length, num_dim)      
-            input_hand_feature.zero_()        
-            # batch_size * max_length * CAP_DIM       
-            input_hand_feature = input_hand_feature.scatter_(1, 
-                hand_feature.view(-1, 1), 1).view(hand_feature.size()[0], hand_feature.size()[1], num_dim)        
-            input_hand_feature = autograd.Variable(input_hand_feature)        
-            embeds = torch.cat((embeds, input_hand_feature), 2)
-
-            return embeds
-
-        for input_features_name in ('caps', 'letter_digits',
-                                       'apostrophe_ends','punctuations'):
-            embeds = hand_engineer_concat_kernel(sentences, embeds, 
-                                input_features_name, FEATURE_DIM[input_features_name])
-
-        return embeds

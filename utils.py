@@ -112,7 +112,7 @@ def get_lens(sentences, keyword):
     return [len(sentence[keyword]) for sentence in sentences]
 
 # Return mask matrix
-def sequence_mask(lens, max_len=None):
+def sequence_mask(lens, max_len=None, cuda = False):
     batch_size = lens.size(0)
 
     if max_len is None:
@@ -121,6 +121,9 @@ def sequence_mask(lens, max_len=None):
     ranges = torch.arange(0, max_len).long()
     ranges = ranges.unsqueeze(0).expand(batch_size, max_len)
     ranges = autograd.Variable(ranges)
+
+    if cuda:
+        ranges = ranges.cuda()
 
     lens_exp = lens.unsqueeze(1).expand_as(ranges)
     mask = ranges < lens_exp

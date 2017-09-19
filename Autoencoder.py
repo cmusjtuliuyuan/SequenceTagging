@@ -15,6 +15,7 @@ class Autoencoder(nn.Module):
         # +2 because of START_TAG STOP_TAG
         self.tagset_size = parameter['tagset_size'] + 2
         self.freeze = parameter['freeze']
+        self.is_cuda = parameter['cuda']
         
         self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim)
         self.encoder = LstmCrfModel.LSTM_CRF(parameter)
@@ -30,7 +31,11 @@ class Autoencoder(nn.Module):
         # batch_size * max_length
         input_words = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'words')))
         lens = autograd.Variable(torch.LongTensor(get_lens(sentences, 'words')))
-        labels = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'tags')))  
+        labels = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'tags')))
+        if self.is_cuda:
+            input_words = input_words.cuda()
+            lens = lens.cuda()
+            labels = labels.cuda()  
         # batch_size * max_length * embedding_dim
         embeds = self.word_embeds(input_words)
         # Remove softmax layer
@@ -43,14 +48,16 @@ class Autoencoder(nn.Module):
     def get_loss_unsupervised(self, sentences): # unsupervised loss
     
         lens = autograd.Variable(torch.LongTensor(get_lens(sentences, 'words')))
+        if self.is_cuda:
+            lens = lens.cuda()
         decoder_out, embeds = self.forward(sentences)
         batch_size, max_length, embed_dim = embeds.size()
 
-        mask = sequence_mask(lens).float().unsqueeze(-1).expand_as(decoder_out)
+        mask = sequence_mask(lens, cuda = self.is_cuda).float().unsqueeze(-1).expand_as(decoder_out)
 
         loss_matrix = mask * (decoder_out - embeds)
 
-        loss = torch.sum(loss_matrix*loss_matrix)/(batch_size*max_length*embed_dim)
+        loss = 8*torch.sum(loss_matrix*loss_matrix)/(batch_size*max_length*embed_dim)
 
         return loss
 
@@ -58,6 +65,8 @@ class Autoencoder(nn.Module):
     def forward(self, sentences):
         # batch_size * max_length
         input_words = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'words')))
+        if self.is_cuda:
+            input_words = input_words.cuda()
         # batch_size * max_length * embedding_dim
         embeds = self.word_embeds(input_words)
         # batch_size * max_length * tagset_size+2
@@ -72,6 +81,9 @@ class Autoencoder(nn.Module):
 
         input_words = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'words')))
         lens = autograd.Variable(torch.LongTensor(get_lens(sentences, 'words')))
+        if self.is_cuda:
+            input_words = input_words.cuda()
+            lens = lens.cuda()
 
         embeds = self.word_embeds(input_words)
         preds = self.encoder.get_tags(embeds, lens)

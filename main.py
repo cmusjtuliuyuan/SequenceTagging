@@ -58,6 +58,10 @@ optparser.add_option(
     "--load", default=None,
     help="Load pre-trained Model and dictionaries"
 )
+optparser.add_option(
+    "--cuda", default=True,
+    help="Load pre-trained Model and dictionaries"
+)
 
 # TODO delete lower
 
@@ -99,10 +103,13 @@ def main():
     Model_parameters['hidden_dim'] = opts.hidden_dim
     Model_parameters['tagset_size'] = len(dictionaries['tag_to_id'])
     Model_parameters['freeze'] = opts.freeze
+    Model_parameters['cuda'] = opts.cuda
 
 
     #model = LstmModel.LSTMTagger(Model_parameters)
     model = Autoencoder.Autoencoder(Model_parameters)
+    if opts.cuda:
+        model = model.cuda()
     # gradients are allocated lazily, so they are not shared here
     model.share_memory()
 
