@@ -19,8 +19,9 @@ class Autoencoder(nn.Module):
         
         self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim)
         self.encoder = LstmCrfModel.LSTM_CRF(parameter)
-        self.decoder = nn.LSTM(self.tagset_size, self.embedding_dim,
+        self.decoder = nn.LSTM(self.tagset_size, self.vocab_size,
                             num_layers=1, batch_first = True)
+        self.loss_function = nn.NLLLoss(ignore_index = self.vocab_size+1)
 
 
     def init_word_embedding(self, init_matrix):
@@ -43,10 +44,23 @@ class Autoencoder(nn.Module):
         # Ignore hand engineer now
         #embeds = self.hand_engineer_concat(sentences, embeds)
         loss = self.encoder.get_loss(embeds, lens, labels)
-        return loss
+        return loss, True
 
     def get_loss_unsupervised(self, sentences): # unsupervised loss
     
+        input_words = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'words', 
+                                replace = self.vocab_size+1)).contiguous())
+        max_length = input_words.size()[1]
+        if max_length < 80:
+            if self.is_cuda:
+                input_words = input_words.cuda()
+            decoder_out, embeds = self.forward(sentences)
+            
+            loss = self.loss_function(decoder_out.contiguous().view(-1, self.vocab_size), input_words.view(-1))
+            #print "one batch", max_length
+            return loss, True
+        return None, False
+    '''
         lens = autograd.Variable(torch.LongTensor(get_lens(sentences, 'words')))
         if self.is_cuda:
             lens = lens.cuda()
@@ -60,7 +74,7 @@ class Autoencoder(nn.Module):
         loss = 8*torch.sum(loss_matrix*loss_matrix)/(batch_size*max_length*embed_dim)
 
         return loss
-
+    '''
 
     def forward(self, sentences):
         # batch_size * max_length

@@ -11,7 +11,7 @@ import os
 BATCH_SIZE = 32
 LEARNING_RATE = 0.1
 EVALUATE_EVERY = 3
-NUM_EPOCH = 600
+NUM_EPOCH = 100
 SUPERVISED = True
 UNSUPERVISED = False
 
@@ -56,13 +56,15 @@ def train_epoch(model, train_data, opts, optimizer, supervised = True):
     def train_batch(model, sentences, opts, optimizer, supervised = True):
         model.zero_grad()
         if supervised:
-            loss = model.get_loss_supervised(sentences)
+            loss, flag = model.get_loss_supervised(sentences)
         else:
-            loss = model.get_loss_unsupervised(sentences)
-        loss.backward()
-        #print loss.data
-        nn.utils.clip_grad_norm(model.parameters(), opts.clip)
-        optimizer.step()
+            loss, flag = model.get_loss_unsupervised(sentences)
+        if flag:
+            # flag is to check whether the max_length < 80 or not
+            loss.backward()
+            #print loss.data
+            nn.utils.clip_grad_norm(model.parameters(), opts.clip)
+            optimizer.step()
 
     sentences = []
     for i, index in enumerate(np.random.permutation(len(train_data))):
