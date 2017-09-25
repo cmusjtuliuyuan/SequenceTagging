@@ -61,15 +61,13 @@ class LSTM_CRF(nn.Module):
         input_words = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'words')))
         # batch_size * max_length * embedding_dim
         embeds = self.word_embeds(input_words)
-        # Remove softmax layer
-        #embeds = F.softmax(embeds.view(-1, self.embedding_dim)).view(*embeds.size())
-        # Ignore hand engineer now
-        #embeds = self.hand_engineer_concat(sentences, embeds)
-        # batch_size * max_length * hidden_dim
+        embeds = selu(embeds.view(-1, self.embedding_dim)).view(*embeds.size())
+
         lstm_out, _ = self.lstm(embeds)
         # batch_size * max_length * (tagset_size+2)
         lstm_feats = self.hidden2tag(lstm_out)
-        lstm_feats = selu(lstm_feats)
+        lstm_feats = selu(lstm_feats.view(-1, self.tagset_size+2)).view(*lstm_feats.size())
+
         return lstm_feats
 
     def get_loss(self, sentences):
