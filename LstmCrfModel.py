@@ -89,7 +89,7 @@ class LSTM_CRF(nn.Module):
         
         feats = self._get_lstm_features(sentences)
         lens = autograd.Variable(torch.LongTensor(get_lens(sentences, 'words')))
-        _, preds = self.CRF.viterbi_decode(feats, lens)
+        _, preds = self.CRF.marginal_decode(feats, lens)
 
         preds = [pred[:l].tolist() for pred, l in zip(preds.data, lens.data)]
         

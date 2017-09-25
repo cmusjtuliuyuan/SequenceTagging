@@ -31,9 +31,7 @@ def sequence_mask(lens, max_len=None):
     return mask
 
 class CRF(nn.Module):
-    '''
-    Thanks, kaniblu!
-    '''
+
     def __init__(self, tagset_size):
         super(CRF, self).__init__()
         # We add 2 here, because of START_TAG and STOP_TAG
@@ -54,6 +52,7 @@ class CRF(nn.Module):
             lens: [batch_size] LongTensor
         Return:
             partition_norm: [batch_size] LongTensor
+            log_alpha_seq: [batch_size, max_length, tag_size+2] FloatTensor
         '''
         batch_size, max_length, _ = logits.size()
         alpha = torch.Tensor(batch_size, self.tagset_size).fill_(-10000.)
@@ -62,6 +61,7 @@ class CRF(nn.Module):
         c_lens = lens.clone()
 
         logits_t = logits.transpose(1,0)
+        log_alpha_seq = []
         for logit in logits_t:
             logit_exp = logit.unsqueeze(2).expand(batch_size, self.tagset_size, self.tagset_size)
             alpha_exp = alpha.unsqueeze(1).expand(batch_size, self.tagset_size, self.tagset_size)
@@ -73,10 +73,64 @@ class CRF(nn.Module):
             alpha = mask * alpha_nxt + (1 - mask) * alpha
             c_lens = c_lens - 1
 
+            log_alpha_seq.append(alpha.unsqueeze(1))
+
         alpha = alpha + self.transitions[self.STOP_TAG].unsqueeze(0).expand_as(alpha)
         partition_norm = log_sum_exp(alpha, 1).squeeze(-1)
 
-        return partition_norm
+        log_alpha_seq = torch.cat(log_alpha_seq, 1)
+
+        return partition_norm, log_alpha_seq
+
+    def _backward_alg(self, logits, lens):
+        '''
+        Arguments:
+            logits: [batch_size, max_length, tagset_size+2] FloatTensor
+            lens: [batch_size] LongTensor
+        Return:
+            partition_norm: [batch_size] LongTensor
+            log_beta_seq: [batch_size, max_length, tag_size+2] FloatTensor
+        '''
+        batch_size, max_length, _ = logits.size()
+        # TODO maybe need to change the initilization
+        beta = torch.Tensor(batch_size, self.tagset_size).fill_(-10000.)
+        beta[:, self.STOP_TAG] = 0
+        beta = autograd.Variable(beta)
+        c_lens = lens.clone()
+
+        # First Step: \beta_{i, T} = \sum_{j} a_{i, j} \beta_{j, T+1}
+
+        beta_exp = beta.unsqueeze(1).expand(batch_size, self.tagset_size, self.tagset_size)
+        trans_exp = self.transitions.transpose(0,1).unsqueeze(0).expand(batch_size, self.tagset_size, self.tagset_size)
+        mat = beta_exp + trans_exp
+        beta_nxt = log_sum_exp(mat, 2).squeeze(-1)
+ 
+        mask = (c_lens >= max_length ).float().unsqueeze(-1).expand_as(beta)
+        beta = mask * beta_nxt + (1 - mask) * beta
+        c_lens = c_lens + 1
+
+        logits_t = logits.transpose(1,0)
+        log_beta_seq = [beta.unsqueeze(1)]
+
+        for i in range(len(logits_t)-1, 0 , -1):
+            logit = logits_t[i]
+            #TODO how to deal with logit
+            logit_exp = logit.unsqueeze(1).expand(batch_size, self.tagset_size, self.tagset_size)
+            beta_exp = beta.unsqueeze(1).expand(batch_size, self.tagset_size, self.tagset_size)
+            trans_exp = self.transitions.transpose(0,1).unsqueeze(0).expand(batch_size, self.tagset_size, self.tagset_size)
+            mat = trans_exp + beta_exp + logit_exp
+            beta_nxt = log_sum_exp(mat, 2).squeeze(-1)
+
+            mask = (c_lens >= max_length ).float().unsqueeze(-1).expand_as(beta)
+            beta = mask * beta_nxt + (1 - mask) * beta
+            c_lens = c_lens + 1
+
+            log_beta_seq.append(beta.unsqueeze(1))
+
+
+        log_beta_seq = torch.cat(log_beta_seq[::-1], 1)
+
+        return log_beta_seq
     
     def _transition_score(self, labels, lens):
         """
@@ -145,7 +199,7 @@ class CRF(nn.Module):
         Return:
             loss: LongTensor
         """
-        partition_norm = self._forward_alg(logits, lens)
+        partition_norm, _ = self._forward_alg(logits, lens)
         transition_score = self._transition_score(labels, lens)
         emission_score = self._emission_score(logits, labels, lens)
 
@@ -206,6 +260,22 @@ class CRF(nn.Module):
 
         return scores, paths
 
+    def marginal_decode(self, logits, lens):
+        """
+        Arguments:
+            logits: [batch_size, max_length, n_labels] FloatTensor
+            lens: [batch_size] LongTensor
+        Return:
+            scores: [batch_size] LongTensor
+            path: [batch_size, max_length] LongTensor
+        """
+        _, log_alpha = self._forward_alg(logits, lens)
+        log_beta = self._backward_alg(logits, lens)
+        log_distribution = log_alpha + log_beta
+        scores, paths = torch.max(log_distribution, dim = 2)
+        scores = torch.sum(scores, dim = 1)
+
+        return scores, paths
 
     def forward(self, logits):
         '''
