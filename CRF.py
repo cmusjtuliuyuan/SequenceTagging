@@ -77,6 +77,8 @@ class CRF(nn.Module):
         '''
         batch_size, max_length, _ = logits.size()
         beta = torch.Tensor(batch_size, self.tagset_size).fill_(-10000.)
+        if self.is_cuda:
+            beta = beta.cuda()
         beta[:, self.STOP_TAG] = 0
         beta = autograd.Variable(beta)
         c_lens = lens.clone()

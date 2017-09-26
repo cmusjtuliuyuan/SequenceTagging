@@ -79,12 +79,14 @@ class Autoencoder(nn.Module):
     def forward(self, sentences):
         # batch_size * max_length
         input_words = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'words')))
+        lens = autograd.Variable(torch.LongTensor(get_lens(sentences, 'words')))
         if self.is_cuda:
             input_words = input_words.cuda()
+            lens = lens.cuda()
         # batch_size * max_length * embedding_dim
         embeds = self.word_embeds(input_words)
         # batch_size * max_length * tagset_size+2
-        encoder_out = self.encoder.forward(embeds)
+        encoder_out = self.encoder.forward(embeds, lens)
         # batch_size * max_length * embedding_dim
         decoder_out, _ = self.decoder.forward(encoder_out)
 

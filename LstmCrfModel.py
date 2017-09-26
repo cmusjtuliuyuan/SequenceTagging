@@ -54,22 +54,22 @@ class LSTM_CRF(nn.Module):
 
     def get_loss(self, embeds, lens, labels):
         # Get the emission scores from the LSTM
-        feats = self._get_lstm_features(embeds)
+        feats = self._get_lstm_features(embeds, lens)
         loss =  self.CRF.get_neg_log_likilihood_loss(feats, labels, lens)
 
         return loss
 
 
-    def forward(self, embeds): # dont confuse this with _forward_alg above.
+    def forward(self, embeds, lens): # dont confuse this with _forward_alg above.
         # Get the emission scores from the BiLSTM
-        feats = self._get_lstm_features(embeds)
+        feats = self._get_lstm_features(embeds, lens)
         return self.CRF.forward(feats)
 
 
     def get_tags(self, embeds, lens):
         
-        feats = self._get_lstm_features(embeds)
-        _, preds = self.CRF.viterbi_decode(feats, lens)
+        feats = self._get_lstm_features(embeds, lens)
+        _, preds = self.CRF.marginal_decode(feats, lens)
 
         preds = [pred[:l].tolist() for pred, l in zip(preds.data, lens.data)]
         
