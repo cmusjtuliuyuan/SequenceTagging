@@ -92,7 +92,6 @@ class CRF(nn.Module):
             log_beta_seq: [batch_size, max_length, tag_size+2] FloatTensor
         '''
         batch_size, max_length, _ = logits.size()
-        # TODO maybe need to change the initilization
         beta = torch.Tensor(batch_size, self.tagset_size).fill_(-10000.)
         beta[:, self.STOP_TAG] = 0
         beta = autograd.Variable(beta)
