@@ -2,6 +2,7 @@ import torch
 import torch.autograd as autograd
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.nn.utils.rnn as R
 import numpy as np
 from CRF import CRF
 DROP_OUT = 0.5
@@ -28,19 +29,27 @@ class LSTM_CRF(nn.Module):
         # Ignore hand engineer now
         #self.lstm = nn.LSTM(self.embedding_dim + sum(FEATURE_DIM.values()), 
         self.lstm = nn.LSTM(self.embedding_dim,
-                self.hidden_dim, num_layers=1, batch_first = True)
+                self.hidden_dim/2, num_layers=1, bidirectional = True, batch_first = True)
         
         # Maps the output of the LSTM into tag space.
         # We add 2 here, because of START_TAG and STOP_TAG
         self.hidden2tag = nn.Linear(self.hidden_dim, self.tagset_size+2)
         self.CRF = CRF(self.tagset_size, parameter)
 
-    def _get_lstm_features(self, embeds):
-        # batch_size * max_length * hidden_dim
-        lstm_out, _ = self.lstm(embeds)
+
+    def _get_lstm_features(self, embeds, lens):
+        embeds = selu(embeds.view(-1, self.embedding_dim)).view(*embeds.size())
+
+        # LSTM part:
+        embeds_packed = R.pack_padded_sequence(embeds, lens.data.tolist(),
+                                          batch_first=True)
+        lstm_out, _ = self.lstm(embeds_packed)
+        lstm_out, _ = R.pad_packed_sequence(lstm_out, batch_first=True)
+
         # batch_size * max_length * (tagset_size+2)
         lstm_feats = self.hidden2tag(lstm_out)
-        lstm_feats = selu(lstm_feats)
+        lstm_feats = selu(lstm_feats.view(-1, self.tagset_size+2)).view(*lstm_feats.size())
+
         return lstm_feats
 
     def get_loss(self, embeds, lens, labels):

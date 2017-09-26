@@ -54,6 +54,8 @@ def train(model, Parse_parameters, opts, dictionaries):
 def train_epoch(model, train_data, opts, optimizer, supervised = True):
 
     def train_batch(model, sentences, opts, optimizer, supervised = True):
+        sentences.sort(key = lambda sentence: -len(sentence['words']))
+
         model.zero_grad()
         if supervised:
             loss, flag = model.get_loss_supervised(sentences)
@@ -83,8 +85,15 @@ def train_epoch(model, train_data, opts, optimizer, supervised = True):
 def evaluate(model, dev_data, dictionaries):
 
     def evaluate_batch(model, sentences, dictionaries, file):
-        preds = model.get_tags(sentences)
-
+        # First sort sentences
+        ordered_sentences = sorted(sentences, key = lambda sentence: -len(sentence['words']))
+        index = sorted(range(len(sentences)), key=lambda k: -len(sentences[k]['words']))
+        # Then predict
+        ordered_preds = model.get_tags(ordered_sentences)
+        # Finaly recover the sentences
+        preds = ordered_preds[:]
+        for o_p, i in zip(ordered_preds, index):
+            preds[i] = o_p
         for sentence, pred in zip(sentences, preds):
 
             # get predict tags
