@@ -63,7 +63,8 @@ class LSTM_CRF(nn.Module):
     def forward(self, embeds, lens): # dont confuse this with _forward_alg above.
         # Get the emission scores from the BiLSTM
         feats = self._get_lstm_features(embeds, lens)
-        return self.CRF.forward(feats)
+        log_distribution = self.CRF.forward(feats, lens)
+        return log_distribution
 
 
     def get_tags(self, embeds, lens):
