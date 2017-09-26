@@ -96,7 +96,7 @@ def prepare_dictionaries(parameters):
 
     # Load sentences
     train_sentences = load_sentences(train_path, zeros)
-
+    '''
     if parameters['pre_emb']:
         dev_sentences = load_sentences(dev_path,  zeros)
         sentences = train_sentences + dev_sentences
@@ -105,6 +105,11 @@ def prepare_dictionaries(parameters):
     else:
         dico_words, word_to_id, id_to_word = word_mapping(train_sentences, 
                                     lower,vocabulary_size, parameters['pre_emb'])
+    '''
+    dev_sentences = load_sentences(dev_path,  zeros)
+    sentences = train_sentences + dev_sentences
+    dico_words, word_to_id, id_to_word = word_mapping(sentences, 
+                               lower,vocabulary_size, parameters['pre_emb'])
     dico_tags, tag_to_id, id_to_tag = tag_mapping(train_sentences)
 
     dictionaries = {

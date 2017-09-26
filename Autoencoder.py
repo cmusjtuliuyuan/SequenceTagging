@@ -57,7 +57,7 @@ class Autoencoder(nn.Module):
             decoder_out, embeds = self.forward(sentences)
             
             loss = self.loss_function(decoder_out.contiguous().view(-1, self.vocab_size), input_words.view(-1))
-            print loss.data.numpy()
+            #print loss.data.cpu().numpy()
             return loss, True
         return None, False
     '''
