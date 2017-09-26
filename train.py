@@ -31,6 +31,7 @@ def train(model, Parse_parameters, opts, dictionaries):
     dev_data = load_dataset(Parse_parameters, opts.dev, dictionaries)
     optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE)
     
+    '''
     for epoch in xrange(1, NUM_EPOCH+1): 
         print("Trian epoch: %d"%(epoch))
 
@@ -49,6 +50,19 @@ def train(model, Parse_parameters, opts, dictionaries):
 
         #if epoch % EVALUATE_EVERY == 0:
         #    evaluate(model, dev_data, dictionaries)
+    '''
+    for epoch in xrange(1, 30+1):
+        print("Trian epoch: %d"%(epoch))
+        # unsupervised train
+        unlabel_data_file_name = files[(epoch-1)%len(files)]
+        unlabel_data = load_dataset(Parse_parameters,
+                'data/wiki/'+unlabel_data_file_name, dictionaries, UNSUPERVISED)
+        train_epoch(model, unlabel_data, opts, optimizer, UNSUPERVISED)
+
+    for epoch in xrange(1, 20+1):
+        print("Trian epoch: %d"%(epoch))
+        train_epoch(model, train_data, opts, optimizer, SUPERVISED)
+        evaluate(model, dev_data, dictionaries)
 
 
 def train_epoch(model, train_data, opts, optimizer, supervised = True):
