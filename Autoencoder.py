@@ -19,9 +19,10 @@ class Autoencoder(nn.Module):
         
         self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim)
         self.encoder = LstmCrfModel.LSTM_CRF(parameter)
-        self.decoder = nn.LSTM(self.tagset_size, self.vocab_size,
+        # minus 1 because we delete START_TAG
+        self.decoder = nn.LSTM(self.tagset_size-1, self.vocab_size,
                             num_layers=1, batch_first = True)
-        self.loss_function = nn.NLLLoss(ignore_index = self.vocab_size+1)
+        self.loss_function = nn.CrossEntropyLoss(ignore_index = self.vocab_size+1)
 
 
     def init_word_embedding(self, init_matrix):
@@ -57,7 +58,7 @@ class Autoencoder(nn.Module):
             decoder_out, embeds = self.forward(sentences)
             
             loss = self.loss_function(decoder_out.contiguous().view(-1, self.vocab_size), input_words.view(-1))
-            #print "one batch", max_length
+            print loss.data.numpy()
             return loss, True
         return None, False
     '''
@@ -87,8 +88,13 @@ class Autoencoder(nn.Module):
         embeds = self.word_embeds(input_words)
         # batch_size * max_length * tagset_size+2
         encoder_out = self.encoder.forward(embeds, lens)
+
+        no_start_encoder_out = torch.cat((encoder_out[:,:,:self.encoder.CRF.START_TAG],
+                                           encoder_out[:,:, self.encoder.CRF.START_TAG+1:]), dim = 2)
+        no_start_encoder_out_mean = torch.mean(no_start_encoder_out, dim = 2, keepdim=True)
+        no_start_encoder_out = no_start_encoder_out - no_start_encoder_out_mean
         # batch_size * max_length * embedding_dim
-        decoder_out, _ = self.decoder.forward(encoder_out)
+        decoder_out, _ = self.decoder.forward(no_start_encoder_out)
 
         return decoder_out, embeds
 
