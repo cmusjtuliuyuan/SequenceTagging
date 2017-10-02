@@ -6,6 +6,24 @@ import numpy as np
 import LstmCrfModel
 from utils import sentences2padded, get_lens, sequence_mask
 
+def normalize_log_distribution(log_distribution, dim):
+    """
+    Arguments:
+        log_distribution: [batch_size, max_length, n_labels] FloatTensor
+        dim: int
+    Return:
+        log_distribution_normalized: [batch_size, max_length, n_labels] FloatTensor
+    """
+
+
+    log_distribution_min, _ = torch.min(log_distribution, dim, keepdim=True)
+    log_distribution = log_distribution - log_distribution_min
+    distribution = torch.exp(log_distribution)
+    distribution_sum = torch.sum(distribution, dim, keepdim=True)
+    distribution_normalized = distribution / distribution_sum
+    log_distribution_normalized = torch.log(distribution_normalized)
+    return log_distribution_normalized
+
 class Autoencoder(nn.Module):
     
     def __init__(self, parameter):
@@ -19,7 +37,7 @@ class Autoencoder(nn.Module):
         
         self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim)
         self.encoder = LstmCrfModel.LSTM_CRF(parameter)
-        self.decoder = nn.LSTM(self.tagset_size, self.vocab_size,
+        self.decoder = nn.LSTM(self.tagset_size, self.embedding_dim,
                             num_layers=1, batch_first = True)
         self.loss_function = nn.CrossEntropyLoss(ignore_index = self.vocab_size+1)
 
@@ -39,15 +57,14 @@ class Autoencoder(nn.Module):
             labels = labels.cuda()  
         # batch_size * max_length * embedding_dim
         embeds = self.word_embeds(input_words)
-        # Remove softmax layer
-        #embeds = F.softmax(embeds.view(-1, self.embedding_dim)).view(*embeds.size())
+
         # Ignore hand engineer now
         #embeds = self.hand_engineer_concat(sentences, embeds)
         loss = self.encoder.get_loss(embeds, lens, labels)
         return loss, True
 
     def get_loss_unsupervised(self, sentences): # unsupervised loss
-    
+        '''
         input_words = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'words', 
                                 replace = self.vocab_size+1)).contiguous())
         max_length = input_words.size()[1]
@@ -60,21 +77,23 @@ class Autoencoder(nn.Module):
             #print loss.data.cpu().numpy()
             return loss, True
         return None, False
-    '''
+        '''
         lens = autograd.Variable(torch.LongTensor(get_lens(sentences, 'words')))
         if self.is_cuda:
             lens = lens.cuda()
         decoder_out, embeds = self.forward(sentences)
         batch_size, max_length, embed_dim = embeds.size()
 
-        mask = sequence_mask(lens, cuda = self.is_cuda).float().unsqueeze(-1).expand_as(decoder_out)
+        if max_length < 80:
+            mask = sequence_mask(lens, cuda = self.is_cuda).float().unsqueeze(-1).expand_as(decoder_out)
 
-        loss_matrix = mask * (decoder_out - embeds)
+            loss_matrix = mask * (decoder_out - embeds)
 
-        loss = 8*torch.sum(loss_matrix*loss_matrix)/(batch_size*max_length*embed_dim)
+            loss = 2*torch.sum(loss_matrix*loss_matrix)/(batch_size*max_length*embed_dim)
 
-        return loss
-    '''
+            return loss, True
+        return None, False
+
 
     def forward(self, sentences):
         # batch_size * max_length
@@ -88,11 +107,10 @@ class Autoencoder(nn.Module):
         # batch_size * max_length * tagset_size+2
         encoder_out = self.encoder.forward(embeds, lens)
 
-        no_start_encoder_out = encoder_out[:,:,:self.tagset_size]
-        no_start_encoder_out_mean = torch.mean(no_start_encoder_out, dim = 2, keepdim=True)
-        no_start_encoder_out = no_start_encoder_out - no_start_encoder_out_mean
+        encoder_out_normalized = normalize_log_distribution(encoder_out[:,:,:self.tagset_size], dim=2)
+
         # batch_size * max_length * embedding_dim
-        decoder_out, _ = self.decoder.forward(no_start_encoder_out)
+        decoder_out, _ = self.decoder.forward(encoder_out_normalized)
 
         return decoder_out, embeds
 

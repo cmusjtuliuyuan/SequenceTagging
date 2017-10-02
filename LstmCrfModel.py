@@ -26,10 +26,9 @@ class LSTM_CRF(nn.Module):
         self.hidden_dim = parameter['hidden_dim']
         self.tagset_size = parameter['tagset_size']
 
-        # Ignore hand engineer now
-        #self.lstm = nn.LSTM(self.embedding_dim + sum(FEATURE_DIM.values()), 
+        self.embeds_input = nn.Linear(self.embedding_dim, self.embedding_dim)
         self.lstm = nn.LSTM(self.embedding_dim,
-                self.hidden_dim/2, num_layers=1, bidirectional = True, batch_first = True)
+                self.hidden_dim/2, num_layers = 2, bidirectional = True, batch_first = True)
         
         # Maps the output of the LSTM into tag space.
         # We add 2 here, because of START_TAG and STOP_TAG
@@ -38,6 +37,7 @@ class LSTM_CRF(nn.Module):
 
 
     def _get_lstm_features(self, embeds, lens):
+        embeds = self.embeds_input(embeds)
         embeds = selu(embeds.view(-1, self.embedding_dim)).view(*embeds.size())
 
         # LSTM part:
