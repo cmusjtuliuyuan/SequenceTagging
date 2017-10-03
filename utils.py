@@ -99,4 +99,35 @@ def load_parameters(path, opts):
         opts.zeros = params['zeros']
     return opts
 
+def sentences2padded(sentences, keyword, replace = 0):
+    # Form Batch_Size * Length
+    max_length = max([len(sentence[keyword]) for sentence in sentences])
+    def pad_seq(seq, max_length):
+        padded_seq = seq + [replace for i in range(max_length - len(seq))]
+        return padded_seq
+    padded =[pad_seq(sentence[keyword], max_length) for sentence in sentences]
+    return padded
+
+def get_lens(sentences, keyword):
+    return [len(sentence[keyword]) for sentence in sentences]
+
+# Return mask matrix
+def sequence_mask(lens, max_len=None, cuda = False):
+    batch_size = lens.size(0)
+
+    if max_len is None:
+        max_len = lens.max().data[0]
+
+    ranges = torch.arange(0, max_len).long()
+    ranges = ranges.unsqueeze(0).expand(batch_size, max_len)
+    ranges = autograd.Variable(ranges)
+
+    if cuda:
+        ranges = ranges.cuda()
+
+    lens_exp = lens.unsqueeze(1).expand_as(ranges)
+    mask = ranges < lens_exp
+
+    return mask
+
 

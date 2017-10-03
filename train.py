@@ -11,40 +11,79 @@ import os
 BATCH_SIZE = 32
 LEARNING_RATE = 0.1
 EVALUATE_EVERY = 3
-NUM_EPOCH = 30
+NUM_EPOCH = 100
+SUPERVISED = True
+UNSUPERVISED = False
 
 def adjust_learning_rate(optimizer, lr, epoch):
-    true_lr = lr * (0.5 ** (epoch // 5))
+    true_lr = lr * (0.9 ** (epoch // 10))
     for param_group in optimizer.param_groups:
         param_group['lr'] = true_lr
 
-
 def train(model, Parse_parameters, opts, dictionaries):
+    # Prepare unsupervised dataset:
+    path = 'data/wiki'
+    files = os.listdir(path)
+    # filter .DS_Store ...
+    files = [ x for x in files if not '.DS_Store' in x]
+
     train_data = load_dataset(Parse_parameters, opts.train, dictionaries)
     dev_data = load_dataset(Parse_parameters, opts.dev, dictionaries)
-    optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE)
+    optimizer_s = optim.SGD(model.parameters(), lr=LEARNING_RATE)
+    optimizer_us = optim.SGD(list(model.word_embeds.parameters())+\
+                            list(model.decoder.parameters()), lr=LEARNING_RATE)
     
+    '''
     for epoch in xrange(1, NUM_EPOCH+1): 
         print("Trian epoch: %d"%(epoch))
 
-        adjust_learning_rate(optimizer, LEARNING_RATE , epoch)
-        train_epoch(model, train_data, opts, optimizer)
+        #adjust_learning_rate(optimizer, LEARNING_RATE , epoch)
 
-        if epoch % EVALUATE_EVERY == 0:
-            evaluate(model, dev_data, dictionaries)
+        # supervised train
+        train_epoch(model, train_data, opts, optimizer_s, SUPERVISED)
+        evaluate(model, dev_data, dictionaries)
+
+        # unsupervised train
+        unlabel_data_file_name = files[(epoch-1)%len(files)]
+        unlabel_data = load_dataset(Parse_parameters, 
+                'data/wiki/'+unlabel_data_file_name, dictionaries, UNSUPERVISED)
+        train_epoch(model, unlabel_data, opts, optimizer_us, UNSUPERVISED)
+        evaluate(model, dev_data, dictionaries)
+
+        #if epoch % EVALUATE_EVERY == 0:
+        #    evaluate(model, dev_data, dictionaries)
+    
+    for epoch in xrange(1, 30+1):
+        print("Trian epoch: %d"%(epoch))
+        # unsupervised train
+        unlabel_data_file_name = files[(epoch-1)%len(files)]
+        unlabel_data = load_dataset(Parse_parameters,
+                'data/wiki/'+unlabel_data_file_name, dictionaries, UNSUPERVISED)
+        train_epoch(model, unlabel_data, opts, optimizer_us, UNSUPERVISED)
+    '''
+    for epoch in xrange(1, 20+1):
+        print("Trian epoch: %d"%(epoch))
+        train_epoch(model, train_data, opts, optimizer_s, SUPERVISED)
+        evaluate(model, dev_data, dictionaries)
+    
 
 
-def train_epoch(model, train_data, opts, optimizer):
+def train_epoch(model, train_data, opts, optimizer, supervised = True):
 
-    def train_batch(model, sentences, opts, optimizer):
-        # Sort the sentences
+    def train_batch(model, sentences, opts, optimizer, supervised = True):
         sentences.sort(key = lambda sentence: -len(sentence['words']))
+
         model.zero_grad()
-        loss = model.get_loss(sentences)
-        loss.backward()
-        #print loss.data
-        nn.utils.clip_grad_norm(model.parameters(), opts.clip)
-        optimizer.step()
+        if supervised:
+            loss, flag = model.get_loss_supervised(sentences)
+        else:
+            loss, flag = model.get_loss_unsupervised(sentences)
+        if flag:
+            # flag is to check whether the max_length < 80 or not
+            loss.backward()
+            #print loss.data
+            nn.utils.clip_grad_norm(model.parameters(), opts.clip)
+            optimizer.step()
 
     sentences = []
     for i, index in enumerate(np.random.permutation(len(train_data))):
@@ -52,12 +91,12 @@ def train_epoch(model, train_data, opts, optimizer):
         sentences.append(train_data[index])
         if len(sentences) == BATCH_SIZE:
             # Train the model
-            train_batch(model, sentences, opts, optimizer)
+            train_batch(model, sentences, opts, optimizer, supervised)
             # Clear old batch
             sentences = []
 
     if len(sentences) != 0:
-        train_batch(model, sentences, opts, optimizer)
+        train_batch(model, sentences, opts, optimizer, supervised)
 
 
 def evaluate(model, dev_data, dictionaries):

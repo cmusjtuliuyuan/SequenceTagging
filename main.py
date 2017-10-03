@@ -2,7 +2,8 @@ import optparse
 import os
 from collections import OrderedDict
 from loader import prepare_dictionaries, get_word_embedding_matrix
-import LstmCrfModel
+import Autoencoder
+
 import torch
 import numpy as np
 from utils import save_model_dictionaries, load_parameters
@@ -27,11 +28,11 @@ optparser.add_option(
     type='int', help="Replace digits with 0"
 )
 optparser.add_option(
-    "-p", "--pre_emb", default=None,#'embedding/glove.6B.100d.txt',
+    "-p", "--pre_emb", default= None,#'embedding/glove.6B.100d.txt',
     help="Location of pretrained embeddings"
 )
 optparser.add_option(
-    "-v", "--vocab_size", default="8000",
+    "-v", "--vocab_size", default="12000",
     type='int', help="vocab_size"
 )
 optparser.add_option(
@@ -56,6 +57,10 @@ optparser.add_option(
 )
 optparser.add_option(
     "--load", default=None,
+    help="Load pre-trained Model and dictionaries"
+)
+optparser.add_option(
+    "--cuda", default=True,
     help="Load pre-trained Model and dictionaries"
 )
 
@@ -99,10 +104,13 @@ def main():
     Model_parameters['hidden_dim'] = opts.hidden_dim
     Model_parameters['tagset_size'] = len(dictionaries['tag_to_id'])
     Model_parameters['freeze'] = opts.freeze
+    Model_parameters['cuda'] = opts.cuda
 
 
     #model = LstmModel.LSTMTagger(Model_parameters)
-    model = LstmCrfModel.LSTM_CRF(Model_parameters)
+    model = Autoencoder.Autoencoder(Model_parameters)
+    if opts.cuda:
+        model = model.cuda()
     # gradients are allocated lazily, so they are not shared here
     model.share_memory()
 
