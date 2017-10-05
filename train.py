@@ -10,7 +10,6 @@ from Autoencoder import grads
 
 BATCH_SIZE = 32
 LEARNING_RATE = 0.1
-EVALUATE_EVERY = 3
 NUM_EPOCH = 20
 US_FACTOR = 20
 SUPERVISED = True
@@ -48,26 +47,18 @@ def train(model, Parse_parameters, opts, dictionaries):
             train_epoch(model, unlabel_data, opts, optimizer_us, UNSUPERVISED)
             #evaluate(model, dev_data, dictionaries)
 
-        # supervised train
-        for i in range(20):
+        # supervised train until it overfit, at least train 10 epoch
+        overfit = False
+        FB1array = []
+        while not overfit:
             train_epoch(model, train_data, opts, optimizer_s, SUPERVISED)
-            evaluate(model, dev_data, dictionaries)
-        #if epoch % EVALUATE_EVERY == 0:
-        #    evaluate(model, dev_data, dictionaries)
-    '''
-    for epoch in xrange(1, 30+1):
-        print("Trian epoch: %d"%(epoch))
-        # unsupervised train
-        unlabel_data_file_name = files[(epoch-1)%len(files)]
-        unlabel_data = load_dataset(Parse_parameters,
-                'data/wiki/'+unlabel_data_file_name, dictionaries, UNSUPERVISED)
-        train_epoch(model, unlabel_data, opts, optimizer_us, UNSUPERVISED)
+            result = evaluate(model, dev_data, dictionaries)
+            FB1array.append(result['FB1'])
 
-    for epoch in xrange(1, 20+1):
-        print("Trian epoch: %d"%(epoch))
-        train_epoch(model, train_data, opts, optimizer_s, SUPERVISED)
-        evaluate(model, dev_data, dictionaries)
-    '''
+            # check overfit:
+            if len(FB1array)>10:
+                if FB1array[-1]<FB1array[-2] and FB1array[-2]<FB1array[-3]:
+                    overfit = True
 
 
 def train_epoch(model, train_data, opts, optimizer, supervised = True):
