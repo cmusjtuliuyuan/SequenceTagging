@@ -6,6 +6,12 @@ import numpy as np
 import LstmCrfModel
 from utils import sentences2padded, get_lens, sequence_mask
 
+grads = {}
+def save_grad(name):
+    def hook(grad):
+        grads[name] = grad
+    return hook
+
 def normalize_log_distribution(log_distribution, dim):
     """
     Arguments:
@@ -37,8 +43,9 @@ class Autoencoder(nn.Module):
         
         self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim)
         self.encoder = LstmCrfModel.LSTM_CRF(parameter)
-        self.decoder = nn.LSTM(self.tagset_size, self.embedding_dim,
-                            num_layers=1, batch_first = True)
+        #self.decoder = nn.LSTM(self.tagset_size, self.vocab_size,
+        #                    num_layers=1, batch_first = True)
+        self.decoder = nn.Linear(self.tagset_size, self.vocab_size)
         self.loss_function = nn.CrossEntropyLoss(ignore_index = self.vocab_size+1)
 
 
@@ -57,6 +64,7 @@ class Autoencoder(nn.Module):
             labels = labels.cuda()  
         # batch_size * max_length * embedding_dim
         embeds = self.word_embeds(input_words)
+        #embeds.register_hook(save_grad('embeds'))
 
         # Ignore hand engineer now
         #embeds = self.hand_engineer_concat(sentences, embeds)
@@ -64,7 +72,7 @@ class Autoencoder(nn.Module):
         return loss, True
 
     def get_loss_unsupervised(self, sentences): # unsupervised loss
-        '''
+
         input_words = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'words', 
                                 replace = self.vocab_size+1)).contiguous())
         max_length = input_words.size()[1]
@@ -73,7 +81,8 @@ class Autoencoder(nn.Module):
                 input_words = input_words.cuda()
             decoder_out, embeds = self.forward(sentences)
             
-            loss = self.loss_function(decoder_out.contiguous().view(-1, self.vocab_size), input_words.view(-1))
+            loss = self.loss_function(decoder_out[:,:-1,:].contiguous().view(-1, self.vocab_size),
+                                        input_words[:,1:].contiguous().view(-1))
             #print loss.data.cpu().numpy()
             return loss, True
         return None, False
@@ -93,6 +102,7 @@ class Autoencoder(nn.Module):
 
             return loss, True
         return None, False
+        '''
 
 
     def forward(self, sentences):
@@ -104,14 +114,15 @@ class Autoencoder(nn.Module):
             lens = lens.cuda()
         # batch_size * max_length * embedding_dim
         embeds = self.word_embeds(input_words)
+        #embeds.register_hook(save_grad('embeds'))
         # batch_size * max_length * tagset_size+2
         encoder_out = self.encoder.forward(embeds, lens)
 
         encoder_out_normalized = normalize_log_distribution(encoder_out[:,:,:self.tagset_size], dim=2)
 
         # batch_size * max_length * embedding_dim
-        decoder_out, _ = self.decoder.forward(encoder_out_normalized)
-
+        #decoder_out, _ = self.decoder.forward(encoder_out_normalized)
+        decoder_out = self.decoder.forward(encoder_out_normalized)
         return decoder_out, embeds
 
 

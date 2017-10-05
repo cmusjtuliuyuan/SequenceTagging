@@ -32,7 +32,7 @@ optparser.add_option(
     help="Location of pretrained embeddings"
 )
 optparser.add_option(
-    "-v", "--vocab_size", default="12000",
+    "-v", "--vocab_size", default="8000",
     type='int', help="vocab_size"
 )
 optparser.add_option(

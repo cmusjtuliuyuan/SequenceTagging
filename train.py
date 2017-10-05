@@ -6,12 +6,13 @@ import numpy as np
 from loader import load_dataset
 import codecs
 import os
-
+from Autoencoder import grads
 
 BATCH_SIZE = 32
 LEARNING_RATE = 0.1
 EVALUATE_EVERY = 3
-NUM_EPOCH = 100
+NUM_EPOCH = 20
+US_FACTOR = 20
 SUPERVISED = True
 UNSUPERVISED = False
 
@@ -29,30 +30,31 @@ def train(model, Parse_parameters, opts, dictionaries):
 
     train_data = load_dataset(Parse_parameters, opts.train, dictionaries)
     dev_data = load_dataset(Parse_parameters, opts.dev, dictionaries)
-    optimizer_s = optim.SGD(model.parameters(), lr=LEARNING_RATE)
+    optimizer_s = optim.SGD(list(model.word_embeds.parameters())+\
+                            list(model.encoder.parameters())+\
+                            list(model.decoder.parameters()), lr=LEARNING_RATE)
     optimizer_us = optim.SGD(list(model.word_embeds.parameters())+\
                             list(model.decoder.parameters()), lr=LEARNING_RATE)
-    
-    '''
-    for epoch in xrange(1, NUM_EPOCH+1): 
+
+    for epoch in xrange(1, NUM_EPOCH+1):
         print("Trian epoch: %d"%(epoch))
 
         #adjust_learning_rate(optimizer, LEARNING_RATE , epoch)
+        for i in range(US_FACTOR):
+            # unsupervised train
+            unlabel_data_file_name = files[(US_FACTOR*epoch + i - 1)%len(files)]
+            unlabel_data = load_dataset(Parse_parameters,
+                'data/wiki/'+unlabel_data_file_name, dictionaries, UNSUPERVISED)
+            train_epoch(model, unlabel_data, opts, optimizer_us, UNSUPERVISED)
+            #evaluate(model, dev_data, dictionaries)
 
         # supervised train
-        train_epoch(model, train_data, opts, optimizer_s, SUPERVISED)
-        evaluate(model, dev_data, dictionaries)
-
-        # unsupervised train
-        unlabel_data_file_name = files[(epoch-1)%len(files)]
-        unlabel_data = load_dataset(Parse_parameters, 
-                'data/wiki/'+unlabel_data_file_name, dictionaries, UNSUPERVISED)
-        train_epoch(model, unlabel_data, opts, optimizer_us, UNSUPERVISED)
-        evaluate(model, dev_data, dictionaries)
-
+        for i in range(20):
+            train_epoch(model, train_data, opts, optimizer_s, SUPERVISED)
+            evaluate(model, dev_data, dictionaries)
         #if epoch % EVALUATE_EVERY == 0:
         #    evaluate(model, dev_data, dictionaries)
-    
+    '''
     for epoch in xrange(1, 30+1):
         print("Trian epoch: %d"%(epoch))
         # unsupervised train
@@ -60,12 +62,12 @@ def train(model, Parse_parameters, opts, dictionaries):
         unlabel_data = load_dataset(Parse_parameters,
                 'data/wiki/'+unlabel_data_file_name, dictionaries, UNSUPERVISED)
         train_epoch(model, unlabel_data, opts, optimizer_us, UNSUPERVISED)
-    '''
+
     for epoch in xrange(1, 20+1):
         print("Trian epoch: %d"%(epoch))
         train_epoch(model, train_data, opts, optimizer_s, SUPERVISED)
         evaluate(model, dev_data, dictionaries)
-    
+    '''
 
 
 def train_epoch(model, train_data, opts, optimizer, supervised = True):
@@ -83,6 +85,8 @@ def train_epoch(model, train_data, opts, optimizer, supervised = True):
             loss.backward()
             #print loss.data
             nn.utils.clip_grad_norm(model.parameters(), opts.clip)
+            #print 'supervised = ', supervised, torch.max(grads['embeds']).data.cpu().numpy()
+            #print 'loss:', loss.data.cpu().numpy()
             optimizer.step()
 
     sentences = []
@@ -120,7 +124,7 @@ def evaluate(model, dev_data, dictionaries):
             true_tags = [dictionaries['id_to_tag'][tag] for tag in sentence['tags']]
 
             # write words pos true_tag predict_tag into a file
-            for word, pos, true_tag, predict_tag in zip(sentence['str_words'], 
+            for word, pos, true_tag, predict_tag in zip(sentence['str_words'],
                                                     sentence['pos'],
                                                     true_tags, predict_tags):
                 file.write('%s %s %s %s\n' % (word, pos ,true_tag, predict_tag))
