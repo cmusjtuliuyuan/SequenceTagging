@@ -28,7 +28,7 @@ optparser.add_option(
     type='int', help="Replace digits with 0"
 )
 optparser.add_option(
-    "-p", "--pre_emb", default= None,#'embedding/glove.6B.100d.txt',
+    "-p", "--pre_emb", default= 'embedding/glove.6B.100d.txt',
     help="Location of pretrained embeddings"
 )
 optparser.add_option(

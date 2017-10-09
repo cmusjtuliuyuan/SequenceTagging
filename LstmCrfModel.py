@@ -29,7 +29,7 @@ class LSTM_CRF(nn.Module):
         self.embeds_input = nn.Linear(self.embedding_dim, self.embedding_dim)
         self.lstm = nn.LSTM(self.embedding_dim,
                 self.hidden_dim/2, num_layers = 2, bidirectional = True, batch_first = True)
-        
+        self.dropout = nn.Dropout(p=DROP_OUT)
         # Maps the output of the LSTM into tag space.
         # We add 2 here, because of START_TAG and STOP_TAG
         self.hidden2tag = nn.Linear(self.hidden_dim, self.tagset_size+2)
@@ -47,6 +47,7 @@ class LSTM_CRF(nn.Module):
         lstm_out, _ = R.pad_packed_sequence(lstm_out, batch_first=True)
 
         # batch_size * max_length * (tagset_size+2)
+        lstm_out = self.dropout(lstm_out)
         lstm_feats = self.hidden2tag(lstm_out)
         lstm_feats = selu(lstm_feats.view(-1, self.tagset_size+2)).view(*lstm_feats.size())
 

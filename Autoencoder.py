@@ -50,7 +50,10 @@ class Autoencoder(nn.Module):
 
 
     def init_word_embedding(self, init_matrix):
-        self.word_embeds.weight=nn.Parameter(torch.FloatTensor(init_matrix))
+        if self.is_cuda:
+            self.word_embeds.weight=nn.Parameter(torch.FloatTensor(init_matrix).cuda())
+        else:
+            self.word_embeds.weight=nn.Parameter(torch.FloatTensor(init_matrix))
         self.word_embeds.weight.requires_grad = not self.freeze
 
     def get_loss_supervised(self, sentences): # supervised loss
@@ -81,8 +84,8 @@ class Autoencoder(nn.Module):
                 input_words = input_words.cuda()
             decoder_out, embeds = self.forward(sentences)
             
-            loss = self.loss_function(decoder_out[:,:-1,:].contiguous().view(-1, self.vocab_size),
-                                        input_words[:,1:].contiguous().view(-1))
+            loss = self.loss_function(decoder_out.contiguous().view(-1, self.vocab_size),
+                                        input_words.contiguous().view(-1))
             #print loss.data.cpu().numpy()
             return loss, True
         return None, False

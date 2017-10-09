@@ -10,7 +10,7 @@ from Autoencoder import grads
 
 BATCH_SIZE = 32
 LEARNING_RATE = 0.1
-NUM_EPOCH = 20
+NUM_EPOCH = 30
 US_FACTOR = 20
 SUPERVISED = True
 UNSUPERVISED = False
@@ -23,6 +23,7 @@ def adjust_learning_rate(optimizer, lr, epoch):
 def train(model, Parse_parameters, opts, dictionaries):
     # Prepare unsupervised dataset:
     path = 'data/wiki'
+    TEMP_PATH = 'models/tmp_model.mdl'
     files = os.listdir(path)
     # filter .DS_Store ...
     files = [ x for x in files if not '.DS_Store' in x]
@@ -38,27 +39,35 @@ def train(model, Parse_parameters, opts, dictionaries):
     for epoch in xrange(1, NUM_EPOCH+1):
         print("Trian epoch: %d"%(epoch))
 
-        #adjust_learning_rate(optimizer, LEARNING_RATE , epoch)
-        for i in range(US_FACTOR):
-            # unsupervised train
-            unlabel_data_file_name = files[(US_FACTOR*epoch + i - 1)%len(files)]
-            unlabel_data = load_dataset(Parse_parameters,
-                'data/wiki/'+unlabel_data_file_name, dictionaries, UNSUPERVISED)
-            train_epoch(model, unlabel_data, opts, optimizer_us, UNSUPERVISED)
-            #evaluate(model, dev_data, dictionaries)
-
-        # supervised train until it overfit, at least train 10 epoch
+        # supervised train until it overfit
+        # at least train 10 epochs, at most 30 epochs
         overfit = False
         FB1array = []
         while not overfit:
             train_epoch(model, train_data, opts, optimizer_s, SUPERVISED)
             result = evaluate(model, dev_data, dictionaries)
+
             FB1array.append(result['FB1'])
 
+            # save the best model:
+            if result['FB1'] == max(FB1array):
+                torch.save(model.state_dict(), TEMP_PATH)
+
             # check overfit:
-            if len(FB1array)>10:
+            if len(FB1array)>20:
                 if FB1array[-1]<FB1array[-2] and FB1array[-2]<FB1array[-3]:
                     overfit = True
+            if len(FB1array)>30:
+                overfit = True
+
+        # unsupervised train
+        model.load_state_dict(torch.load(TEMP_PATH))
+        #adjust_learning_rate(optimizer, LEARNING_RATE , epoch)
+        for i in range(US_FACTOR):
+            unlabel_data_file_name = files[(US_FACTOR*epoch + i - 1)%len(files)]
+            unlabel_data = load_dataset(Parse_parameters,
+                'data/wiki/'+unlabel_data_file_name, dictionaries, UNSUPERVISED)
+            train_epoch(model, unlabel_data, opts, optimizer_us, UNSUPERVISED)
 
 
 def train_epoch(model, train_data, opts, optimizer, supervised = True):
@@ -80,6 +89,7 @@ def train_epoch(model, train_data, opts, optimizer, supervised = True):
             #print 'loss:', loss.data.cpu().numpy()
             optimizer.step()
 
+    model.train()
     sentences = []
     for i, index in enumerate(np.random.permutation(len(train_data))):
         # Prepare batch dataset
@@ -124,6 +134,7 @@ def evaluate(model, dev_data, dictionaries):
     """
     Evaluate current model using CoNLL script.
     """
+    model.eval()
     output_path = 'tmp/evaluate.txt'
     scores_path = 'tmp/score.txt'
     eval_script = './tmp/conlleval'
