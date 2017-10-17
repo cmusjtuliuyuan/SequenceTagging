@@ -40,11 +40,19 @@ optparser.add_option(
     type='int', help="words hidden dimension"
 )
 optparser.add_option(
+    "-c", "--char_dim", default="25",
+    type='int', help="Char embedding dimension"
+)
+optparser.add_option(
+    "-C", "--char_hidden_dim", default="25",
+    type='int', help="Char LSTM hidden layer size"
+)
+optparser.add_option(
     "-d", "--hidden_dim", default="200",
     type='int', help="LSTM hidden dimension"
 )
 optparser.add_option(
-    "-c", "--clip", default=5.0,
+    "--clip", default=5.0,
     help="gradient clipping l2 norm"
 )
 optparser.add_option(
@@ -102,6 +110,8 @@ def main():
     Model_parameters['vocab_size'] = opts.vocab_size
     Model_parameters['embedding_dim'] = opts.embedding_dim
     Model_parameters['hidden_dim'] = opts.hidden_dim
+    Model_parameters['char_dim'] = opts.char_dim
+    Model_parameters['char_hidden_dim'] = opts.char_hidden_dim
     Model_parameters['tagset_size'] = len(dictionaries['tag_to_id'])
     Model_parameters['freeze'] = opts.freeze
     Model_parameters['cuda'] = opts.cuda

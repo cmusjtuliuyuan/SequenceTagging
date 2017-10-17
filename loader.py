@@ -36,7 +36,6 @@ def word_mapping(sentences, lower, vocabulary_size, pre_train = None):
     """
     words = [[x[0].lower() if lower else x[0] for x in s] for s in sentences]
     dico = create_dico(words)
-    word_to_id, id_to_word = create_mapping(dico, vocabulary_size)
     print ("Found %i unique words (%i in total)" % 
         (len(dico), sum(len(x) for x in words))
     )
@@ -52,6 +51,15 @@ def word_mapping(sentences, lower, vocabulary_size, pre_train = None):
 
     return dico, word_to_id, id_to_word
 
+def char_mapping(sentences):
+    """
+    Create a dictionary and mapping of characters, sorted by frequency.
+    """
+    chars = ["".join([w[0] for w in s]) for s in sentences]
+    dico = create_dico(chars)
+    char_to_id, id_to_char = create_mapping(dico)
+    print "Found %i unique characters" % len(dico)
+    return dico, char_to_id, id_to_char
 
 def tag_mapping(sentences):
     """
@@ -63,8 +71,24 @@ def tag_mapping(sentences):
     print("Found %i unique named entity tags" % (len(dico)))
     return dico, tag_to_id, id_to_tag
 
+def cap_feature(s):
+    """
+    Capitalization feature:
+    0 = low caps
+    1 = all caps
+    2 = first letter caps
+    3 = one capital (not first letter)
+    """
+    if s.lower() == s:
+        return 0
+    elif s.upper() == s:
+        return 1
+    elif s[0].upper() == s[0]:
+        return 2
+    else:
+        return 3
 
-def prepare_dataset(sentences, word_to_id, tag_to_id, lower=False, supervised = True):
+def prepare_dataset(sentences, word_to_id, char_to_id,tag_to_id, lower=False, supervised = True):
     """
     Prepare the dataset. Return a list of lists of dictionaries containing:
         - word indexes
@@ -76,9 +100,15 @@ def prepare_dataset(sentences, word_to_id, tag_to_id, lower=False, supervised = 
         str_words = [w[0] for w in s]
         words = [word_to_id[f(w) if f(w) in word_to_id else '<UNK>']
                  for w in str_words]
+        # Skip characters that are not in the training set         
+        chars = [[char_to_id[c] for c in w if c in char_to_id]
+                 for w in str_words]
+        caps = [cap_feature(w) for w in str_words]         
         data.append({
             'str_words': str_words,
             'words': words,
+            'chars': chars,
+            'caps': caps,         
         })
         if supervised:
             pos = [w[1] for w in s]
@@ -110,11 +140,14 @@ def prepare_dictionaries(parameters):
     sentences = train_sentences + dev_sentences
     dico_words, word_to_id, id_to_word = word_mapping(sentences, 
                                lower,vocabulary_size, parameters['pre_emb'])
+    dico_chars, char_to_id, id_to_char = char_mapping(train_sentences)
     dico_tags, tag_to_id, id_to_tag = tag_mapping(train_sentences)
 
     dictionaries = {
         'word_to_id': word_to_id,
         'id_to_word': id_to_word,
+        'char_to_id': char_to_id,
+        'id_to_char': id_to_char,
         'tag_to_id': tag_to_id,
         'id_to_tag': id_to_tag,
     }
@@ -129,7 +162,8 @@ def load_dataset(parameters, path, dictionaries, supervised = True):
     # Load sentences
     sentences = load_sentences(path, zeros)
     dataset = prepare_dataset(
-        sentences, dictionaries['word_to_id'], dictionaries['tag_to_id'], lower, supervised
+        sentences, dictionaries['word_to_id'], dictionaries['char_to_id'], 
+        dictionaries['tag_to_id'], lower, supervised
     )
     print("%i sentences in %s ."%(len(dataset), path))
     return dataset
