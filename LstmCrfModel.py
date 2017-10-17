@@ -6,12 +6,7 @@ import torch.nn.utils.rnn as R
 import numpy as np
 from CRF import CRF
 DROP_OUT = 0.5
-FEATURE_DIM = {
-    'caps': 4,
-    'letter_digits': 4,
-    'apostrophe_ends': 2,
-    'punctuations': 2,
-}
+from loader import FEATURE_DIM
 
 def selu(x):
     alpha = 1.6732632423543772848170429916717
@@ -22,7 +17,7 @@ class LSTM_CRF(nn.Module):
     
     def __init__(self, parameter):
         super(LSTM_CRF, self).__init__()
-        self.embedding_dim = parameter['embedding_dim']
+        self.embedding_dim = parameter['embedding_dim']+sum(FEATURE_DIM.values())
         self.hidden_dim = parameter['hidden_dim']
         self.tagset_size = parameter['tagset_size']
 

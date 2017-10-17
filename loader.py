@@ -6,6 +6,12 @@ from utils import read_pre_training
 import numpy as np
 import string 
 
+FEATURE_DIM = {
+    'caps': 4,
+    'letter_digits': 4,
+    'apostrophe_ends': 2,
+    'punctuations': 2,
+}
 
 def load_sentences(path, zeros):
     """
@@ -88,6 +94,29 @@ def cap_feature(s):
     else:
         return 3
 
+def letter_digit_feature(s):
+    if re.search('[a-zA-Z]',s) and re.search('[0-9]',s):
+        return 0
+    elif re.search('[a-zA-Z]',s):
+        return 1
+    elif re.search('[0-9]',s):
+        return 2
+    else:
+        return 3
+
+def apostrophe_end_feature(s):
+    if len(s)>1 and s[-2:] == "'s":
+        return 0
+    else:
+        return 1
+
+
+def punctuation_feature(s):
+    if re.search('['+string.punctuation+']', 'a'):
+        return 0
+    else: 
+        return 1
+
 def prepare_dataset(sentences, word_to_id, char_to_id,tag_to_id, lower=False, supervised = True):
     """
     Prepare the dataset. Return a list of lists of dictionaries containing:
@@ -103,12 +132,18 @@ def prepare_dataset(sentences, word_to_id, char_to_id,tag_to_id, lower=False, su
         # Skip characters that are not in the training set         
         chars = [[char_to_id[c] for c in w if c in char_to_id]
                  for w in str_words]
-        caps = [cap_feature(w) for w in str_words]         
+        caps = [cap_feature(w) for w in str_words]  
+        letter_digits = [letter_digit_feature(w) for w in str_words]
+        apostrophe_ends = [apostrophe_end_feature(w) for w in str_words]
+        punctuations = [punctuation_feature(w) for w in str_words]       
         data.append({
             'str_words': str_words,
             'words': words,
             'chars': chars,
-            'caps': caps,         
+            'caps': caps,
+            'letter_digits': letter_digits,
+            'apostrophe_ends': apostrophe_ends,
+            'punctuations': punctuations,     
         })
         if supervised:
             pos = [w[1] for w in s]
