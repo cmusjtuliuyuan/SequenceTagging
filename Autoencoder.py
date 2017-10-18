@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import LstmCrfModel
-from utils import sentences2padded, get_lens, sequence_mask
+from utils import sentences2padded, char2padded, get_lens, sequence_mask
 from loader import FEATURE_DIM
 
 grads = {}
@@ -38,10 +38,11 @@ class Autoencoder(nn.Module):
         self.embedding_dim = parameter['embedding_dim']
         self.vocab_size = parameter['vocab_size']
         self.char_dim = parameter['char_dim']
-        self.char_hidden_dim = parameter['char_hidden_dim']
+        self.char_lstm_dim = parameter['char_lstm_dim']
         self.tagset_size = parameter['tagset_size']
         self.freeze = parameter['freeze']
         self.is_cuda = parameter['cuda']
+        self.char_size = parameter['char_size']
         
         self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim)
         self.cap_embeds = nn.Embedding(FEATURE_DIM['caps'], FEATURE_DIM['caps'])
@@ -54,6 +55,12 @@ class Autoencoder(nn.Module):
         #                    num_layers=1, batch_first = True)
         self.decoder = nn.Linear(self.tagset_size, self.vocab_size)
         self.loss_function = nn.CrossEntropyLoss(ignore_index = self.vocab_size+1)
+        if self.char_dim!=0:
+            self.char_embeds = nn.Embedding(self.char_size, self.char_dim)
+            self.char_lstm_forward = nn.LSTM(self.char_dim, self.char_lstm_dim,
+                            num_layers=1, batch_first = False)
+            self.char_lstm_backward = nn.LSTM(self.char_dim, self.char_lstm_dim,
+                            num_layers=1, batch_first = False)
 
 
     def init_word_embedding(self, init_matrix):
@@ -62,6 +69,39 @@ class Autoencoder(nn.Module):
         else:
             self.word_embeds.weight=nn.Parameter(torch.FloatTensor(init_matrix))
         self.word_embeds.weight.requires_grad = not self.freeze
+
+    def get_embeds_chars(self, sentences):
+        forward_chars, backward_chars, lens_chars = char2padded(sentences)
+
+        fc_lstm_array=[]
+        bc_lstm_array=[]
+        for fc, bc, lc in zip(forward_chars, backward_chars, lens_chars):
+            input_fc = autograd.Variable(torch.LongTensor(fc)).cuda()
+            input_bc = autograd.Variable(torch.LongTensor(bc)).cuda()
+            input_lc = autograd.Variable(torch.LongTensor(lc)).cuda()
+            batch_size = input_lc.size()[0]
+            input_lc = ((input_lc - 1)<0).type(torch.LongTensor)+input_lc - 1
+            input_lc = input_lc.unsqueeze(-1).unsqueeze(-1).expand(batch_size,1,self.char_lstm_dim)
+
+            if self.is_cuda:
+                input_fc = input_fc.cuda()
+                input_bc = input_bc.cuda()
+                input_lc = input_lc.cuda()
+            
+            fc_embeds = self.char_embeds(input_fc)
+            bc_embeds = self.char_embeds(input_bc)
+            fc_lstm_out, _ = self.char_lstm_forward(fc_embeds)
+            bc_lstm_out, _ = self.char_lstm_backward(bc_embeds)
+            
+            fc_lstm_out = fc_lstm_out.gather(dim=1, index = input_lc)
+            bc_lstm_out = bc_lstm_out.gather(dim=1, index = input_lc)
+            fc_lstm_array.append(fc_lstm_out)
+            bc_lstm_array.append(bc_lstm_out)
+        fc_lstm = torch.cat(fc_lstm_array, dim=1)
+        bc_lstm = torch.cat(bc_lstm_array, dim=1)
+        embeds_chars = torch.cat((fc_lstm, bc_lstm), dim=2)
+        return embeds_chars
+
 
     def get_embeds(self, sentences):
         input_words = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'words')))
@@ -84,9 +124,9 @@ class Autoencoder(nn.Module):
         embeds_letter_digits = self.letter_digits_embeds(input_letter_digits)
         embeds_apostrophe_ends = self.apostrophe_ends_embeds(input_apostrophe_ends)
         embeds_punctuations = self.punctuations_embeds(input_punctuations)
+        embeds_chars = self.get_embeds_chars(sentences)
         embeds = torch.cat((embeds_word, embeds_caps, embeds_letter_digits,
-                                embeds_apostrophe_ends, embeds_punctuations),2)
-
+                        embeds_apostrophe_ends, embeds_punctuations, embeds_chars),2)
         return embeds, lens
 
     def get_loss_supervised(self, sentences): # supervised loss

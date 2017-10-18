@@ -17,7 +17,9 @@ class LSTM_CRF(nn.Module):
     
     def __init__(self, parameter):
         super(LSTM_CRF, self).__init__()
-        self.embedding_dim = parameter['embedding_dim']+sum(FEATURE_DIM.values())
+        self.embedding_dim = parameter['embedding_dim']\
+                            +sum(FEATURE_DIM.values())\
+                            +2*parameter['char_lstm_dim']
         self.hidden_dim = parameter['hidden_dim']
         self.tagset_size = parameter['tagset_size']
 

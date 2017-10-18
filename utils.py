@@ -130,4 +130,35 @@ def sequence_mask(lens, max_len=None, cuda = False):
 
     return mask
 
+def char2padded(sentences, replace = 0):
+    def pad_seq_forward(seq, max_char_length):
+        padded_seq = seq + [replace for i in range(max_char_length - len(seq))]
+        return padded_seq
+    def pad_seq_backward(seq, max_char_length):
+        padded_seq = seq[::-1] + [replace for i in range(max_char_length - len(seq))]
+        return padded_seq
 
+    forward_chars=[]
+    backward_chars=[]
+    lens_chars=[]
+
+    max_length = max([len(sentence['words']) for sentence in sentences])
+    for i in range(max_length):
+        max_char_length = max([len(sentence['chars'][i]) 
+                        if len(sentence['chars'])>i else 0 
+                        for sentence in sentences])
+        forward_padded =[pad_seq_forward(sentence['chars'][i], max_char_length)
+                        if len(sentence['chars'])>i else pad_seq_forward([], max_char_length)
+                        for sentence in sentences]
+
+        backward_padded =[pad_seq_backward(sentence['chars'][i], max_char_length)
+                        if len(sentence['chars'])>i else pad_seq_backward([], max_char_length)
+                        for sentence in sentences]
+
+        length = [len(sentence['chars'][i]) if len(sentence['chars'])>i else 0 
+                        for sentence in sentences]
+
+        forward_chars.append(forward_padded)
+        backward_chars.append(backward_padded)
+        lens_chars.append(length)
+    return forward_chars, backward_chars, lens_chars
