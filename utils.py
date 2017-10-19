@@ -143,10 +143,11 @@ def char2padded(sentences, replace = 0):
     lens_chars=[]
 
     max_length = max([len(sentence['words']) for sentence in sentences])
-    for i in range(max_length):
-        max_char_length = max([len(sentence['chars'][i]) 
+    max_char_length = max([ max([len(sentence['chars'][i]) 
                         if len(sentence['chars'])>i else 0 
                         for sentence in sentences])
+                        for i in range(max_length)])
+    for i in range(max_length):
         forward_padded =[pad_seq_forward(sentence['chars'][i], max_char_length)
                         if len(sentence['chars'])>i else pad_seq_forward([], max_char_length)
                         for sentence in sentences]
@@ -161,4 +162,4 @@ def char2padded(sentences, replace = 0):
         forward_chars.append(forward_padded)
         backward_chars.append(backward_padded)
         lens_chars.append(length)
-    return forward_chars, backward_chars, lens_chars
+    return forward_chars, backward_chars, lens_chars, max_char_length

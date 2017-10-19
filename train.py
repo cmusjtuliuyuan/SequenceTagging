@@ -15,10 +15,9 @@ US_FACTOR = 20
 SUPERVISED = True
 UNSUPERVISED = False
 
-def adjust_learning_rate(optimizer, lr, epoch):
-    true_lr = lr * (0.9 ** (epoch // 10))
+def adjust_learning_rate(optimizer, lr):
     for param_group in optimizer.param_groups:
-        param_group['lr'] = true_lr
+        param_group['lr'] = lr
 
 def train(model, Parse_parameters, opts, dictionaries):
     # Prepare unsupervised dataset:
@@ -43,6 +42,7 @@ def train(model, Parse_parameters, opts, dictionaries):
         # at least train 10 epochs, at most 30 epochs
         overfit = False
         FB1array = []
+        adjust_learning_rate(optimizer_s, LEARNING_RATE)
         while not overfit:
             train_epoch(model, train_data, opts, optimizer_s, SUPERVISED)
             result = evaluate(model, dev_data, dictionaries)
@@ -54,15 +54,19 @@ def train(model, Parse_parameters, opts, dictionaries):
                 torch.save(model.state_dict(), TEMP_PATH)
 
             # check overfit:
-            if len(FB1array)>20:
+            if len(FB1array)>10:
                 if FB1array[-1]<FB1array[-2] and FB1array[-2]<FB1array[-3]:
                     overfit = True
-            if len(FB1array)>30:
+            if len(FB1array)>20:
                 overfit = True
 
         # unsupervised train
         model.load_state_dict(torch.load(TEMP_PATH))
-        #adjust_learning_rate(optimizer, LEARNING_RATE , epoch)
+        adjust_learning_rate(optimizer_s, LEARNING_RATE/10)
+        for _ in range(2):
+            train_epoch(model, train_data, opts, optimizer_s, SUPERVISED)
+            result = evaluate(model, dev_data, dictionaries)
+        
         for i in range(US_FACTOR):
             unlabel_data_file_name = files[(US_FACTOR*epoch + i - 1)%len(files)]
             unlabel_data = load_dataset(Parse_parameters,

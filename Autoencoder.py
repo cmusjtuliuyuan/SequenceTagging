@@ -70,36 +70,46 @@ class Autoencoder(nn.Module):
             self.word_embeds.weight=nn.Parameter(torch.FloatTensor(init_matrix))
         self.word_embeds.weight.requires_grad = not self.freeze
 
+
     def get_embeds_chars(self, sentences):
-        forward_chars, backward_chars, lens_chars = char2padded(sentences)
-
-        fc_lstm_array=[]
-        bc_lstm_array=[]
+        batch_size = len(sentences)
+        forward_chars, backward_chars, lens_chars, max_char_length = char2padded(sentences)
+        
+        fc_input_array=[]
+        bc_input_array=[]
+        lc_input_array=[]
         for fc, bc, lc in zip(forward_chars, backward_chars, lens_chars):
-            input_fc = autograd.Variable(torch.LongTensor(fc)).cuda()
-            input_bc = autograd.Variable(torch.LongTensor(bc)).cuda()
-            input_lc = autograd.Variable(torch.LongTensor(lc)).cuda()
-            batch_size = input_lc.size()[0]
-            input_lc = ((input_lc - 1)<0).type(torch.LongTensor)+input_lc - 1
-            input_lc = input_lc.unsqueeze(-1).unsqueeze(-1).expand(batch_size,1,self.char_lstm_dim)
+            input_fc = autograd.Variable(torch.LongTensor(fc))
+            input_bc = autograd.Variable(torch.LongTensor(bc))
+            input_lc = autograd.Variable(torch.LongTensor(lc))
+            fc_input_array.append(input_fc.unsqueeze(dim=1))
+            bc_input_array.append(input_bc.unsqueeze(dim=1))
+            lc_input_array.append(input_lc.unsqueeze(dim=1))
+        # batch_size * sentence_length, char_length
+        fc_input_cat = torch.cat(fc_input_array, dim=1).contiguous().view(-1,max_char_length)
+        bc_input_cat = torch.cat(bc_input_array, dim=1).contiguous().view(-1,max_char_length)
+        lc_input_cat = torch.cat(lc_input_array, dim=1).contiguous().view(-1)
+        # batch_size * sentence_length, 1, char_embed_dim
+        lc_index = lc_input_cat.unsqueeze(-1).unsqueeze(-1).expand(fc_input_cat.size()[0],1,self.char_lstm_dim)
+        lc_index = ((lc_index - 1)<0).type(torch.LongTensor)+lc_index - 1
 
-            if self.is_cuda:
-                input_fc = input_fc.cuda()
-                input_bc = input_bc.cuda()
-                input_lc = input_lc.cuda()
-            
-            fc_embeds = self.char_embeds(input_fc)
-            bc_embeds = self.char_embeds(input_bc)
-            fc_lstm_out, _ = self.char_lstm_forward(fc_embeds)
-            bc_lstm_out, _ = self.char_lstm_backward(bc_embeds)
-            
-            fc_lstm_out = fc_lstm_out.gather(dim=1, index = input_lc)
-            bc_lstm_out = bc_lstm_out.gather(dim=1, index = input_lc)
-            fc_lstm_array.append(fc_lstm_out)
-            bc_lstm_array.append(bc_lstm_out)
-        fc_lstm = torch.cat(fc_lstm_array, dim=1)
-        bc_lstm = torch.cat(bc_lstm_array, dim=1)
-        embeds_chars = torch.cat((fc_lstm, bc_lstm), dim=2)
+        if self.is_cuda:
+            fc_input_cat = fc_input_cat.cuda()
+            bc_input_cat = bc_input_cat.cuda()
+            lc_index = lc_index.cuda()
+
+        # batch_size * sentence_length, char_length, char_embed_dim
+        fc_embeds = self.char_embeds(fc_input_cat)
+        bc_embeds = self.char_embeds(bc_input_cat)
+        # batch_size * sentence_length, char_length, char_lstm_dim
+        fc_lstm_out, _ = self.char_lstm_forward(fc_embeds)
+        bc_lstm_out, _ = self.char_lstm_backward(bc_embeds)
+        fc_lstm_out = fc_lstm_out.gather(dim=1, index = lc_index)\
+                            .unsqueeze(dim=1).view(batch_size,-1, self.char_lstm_dim)
+        bc_lstm_out = bc_lstm_out.gather(dim=1, index = lc_index)\
+                            .unsqueeze(dim=1).view(batch_size,-1, self.char_lstm_dim)
+
+        embeds_chars = torch.cat((fc_lstm_out, bc_lstm_out), dim=2)
         return embeds_chars
 
 
@@ -124,9 +134,11 @@ class Autoencoder(nn.Module):
         embeds_letter_digits = self.letter_digits_embeds(input_letter_digits)
         embeds_apostrophe_ends = self.apostrophe_ends_embeds(input_apostrophe_ends)
         embeds_punctuations = self.punctuations_embeds(input_punctuations)
-        embeds_chars = self.get_embeds_chars(sentences)
-        embeds = torch.cat((embeds_word, embeds_caps, embeds_letter_digits,
-                        embeds_apostrophe_ends, embeds_punctuations, embeds_chars),2)
+        embeds_list = [embeds_word, embeds_caps, embeds_letter_digits,
+                        embeds_apostrophe_ends, embeds_punctuations]
+        if self.char_dim!=0:
+            embeds_list.append(self.get_embeds_chars(sentences))
+        embeds = torch.cat((embeds_list),2)
         return embeds, lens
 
     def get_loss_supervised(self, sentences): # supervised loss
