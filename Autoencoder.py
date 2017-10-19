@@ -47,8 +47,6 @@ class Autoencoder(nn.Module):
         self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim)
         self.cap_embeds = nn.Embedding(FEATURE_DIM['caps'], FEATURE_DIM['caps'])
         self.letter_digits_embeds = nn.Embedding(FEATURE_DIM['letter_digits'], FEATURE_DIM['letter_digits'])
-        self.apostrophe_ends_embeds = nn.Embedding(FEATURE_DIM['apostrophe_ends'], FEATURE_DIM['apostrophe_ends'])
-        self.punctuations_embeds = nn.Embedding(FEATURE_DIM['punctuations'], FEATURE_DIM['punctuations'])
 
         self.encoder = LstmCrfModel.LSTM_CRF(parameter)
         #self.decoder = nn.LSTM(self.tagset_size, self.vocab_size,
@@ -117,25 +115,18 @@ class Autoencoder(nn.Module):
         input_words = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'words')))
         input_caps = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'caps')))
         input_letter_digits = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'letter_digits')))
-        input_apostrophe_ends = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'apostrophe_ends')))
-        input_punctuations = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'punctuations')))
         lens = autograd.Variable(torch.LongTensor(get_lens(sentences, 'words')))
         if self.is_cuda:
             input_words = input_words.cuda()
             input_caps = input_caps.cuda()
             input_letter_digits = input_letter_digits.cuda()
-            input_apostrophe_ends = input_apostrophe_ends.cuda()
-            input_punctuations = input_punctuations.cuda()
             lens = lens.cuda()
         # batch_size * max_length * embedding_dim
         embeds_word = self.word_embeds(input_words)
         #embeds.register_hook(save_grad('embeds'))
         embeds_caps = self.cap_embeds(input_caps)
         embeds_letter_digits = self.letter_digits_embeds(input_letter_digits)
-        embeds_apostrophe_ends = self.apostrophe_ends_embeds(input_apostrophe_ends)
-        embeds_punctuations = self.punctuations_embeds(input_punctuations)
-        embeds_list = [embeds_word, embeds_caps, embeds_letter_digits,
-                        embeds_apostrophe_ends, embeds_punctuations]
+        embeds_list = [embeds_word, embeds_caps, embeds_letter_digits]
         if self.char_dim!=0:
             embeds_list.append(self.get_embeds_chars(sentences))
         embeds = torch.cat((embeds_list),2)

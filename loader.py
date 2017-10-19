@@ -9,8 +9,6 @@ import string
 FEATURE_DIM = {
     'caps': 4,
     'letter_digits': 4,
-    'apostrophe_ends': 2,
-    'punctuations': 2,
 }
 
 def load_sentences(path, zeros):
@@ -45,13 +43,7 @@ def word_mapping(sentences, lower, vocabulary_size, pre_train = None):
     print ("Found %i unique words (%i in total)" % 
         (len(dico), sum(len(x) for x in words))
     )
-
-    if pre_train:
-        emb_dictionary = read_pre_training(pre_train)
-        for word in dico.iterkeys():
-        	  if word not in emb_dictionary:
-        	  	  dico[word]=0
-        	  	  
+                  
     dico['<UNK>'] = 10000000
     word_to_id, id_to_word = create_mapping(dico, vocabulary_size)
 
@@ -74,7 +66,7 @@ def tag_mapping(sentences):
     tags = [[word[-1] for word in s] for s in sentences]
     dico = create_dico(tags)
     tag_to_id, id_to_tag = create_mapping(dico)
-    print("Found %i unique named entity tags" % (len(dico)))
+    print("Found %i unique tags" % (len(dico)))
     return dico, tag_to_id, id_to_tag
 
 def cap_feature(s):
@@ -104,18 +96,6 @@ def letter_digit_feature(s):
     else:
         return 3
 
-def apostrophe_end_feature(s):
-    if len(s)>1 and s[-2:] == "'s":
-        return 0
-    else:
-        return 1
-
-
-def punctuation_feature(s):
-    if re.search('['+string.punctuation+']', 'a'):
-        return 0
-    else: 
-        return 1
 
 def prepare_dataset(sentences, word_to_id, char_to_id,tag_to_id, lower=False, supervised = True):
     """
@@ -133,17 +113,13 @@ def prepare_dataset(sentences, word_to_id, char_to_id,tag_to_id, lower=False, su
         chars = [[char_to_id[c] for c in w if c in char_to_id]
                  for w in str_words]
         caps = [cap_feature(w) for w in str_words]  
-        letter_digits = [letter_digit_feature(w) for w in str_words]
-        apostrophe_ends = [apostrophe_end_feature(w) for w in str_words]
-        punctuations = [punctuation_feature(w) for w in str_words]       
+        letter_digits = [letter_digit_feature(w) for w in str_words]      
         data.append({
             'str_words': str_words,
             'words': words,
             'chars': chars,
             'caps': caps,
-            'letter_digits': letter_digits,
-            'apostrophe_ends': apostrophe_ends,
-            'punctuations': punctuations,     
+            'letter_digits': letter_digits,    
         })
         if supervised:
             pos = [w[1] for w in s]
@@ -208,6 +184,32 @@ def get_word_embedding_matrix(dictionary, pre_train, embedding_dim):
     dic_size = len(dictionary)
     initial_matrix = np.random.random(size=(dic_size, embedding_dim))
     for word, idx in dictionary.iteritems(): 
-        if word != '<UNK>':
+        if word != '<UNK>' and word in emb_dictionary.keys():
             initial_matrix[idx] = emb_dictionary[word]
+    return initial_matrix
+
+def get_senna_embedding_matrix(dictionary):
+    """
+    Read pre-train word embeding
+    The detail of this dataset can be found in the following link
+    https://ronan.collobert.com/senna/ 
+    """
+    emb_path = 'embedding/words.lst'
+    print('Preparing pre-train dictionary')
+    emb_dictionary={}
+    # Build Map: 'word' -> line number
+    line_number = 0
+    for line in codecs.open(emb_path, 'r', 'utf-8'):
+        word = line.split()
+        emb_dictionary[word[0]] = line_number
+        line_number += 1
+    # Read the SENNA embedding
+    SENNA_DATA = np.genfromtxt('embedding/senna_embeddings.txt', delimiter=' ')
+    
+    # Build the initial martix 
+    dic_size = len(dictionary)
+    initial_matrix = np.random.random(size=(dic_size, 50))
+    for word, idx in dictionary.iteritems(): 
+        if word != '<UNK>' and word in emb_dictionary.keys():
+            initial_matrix[idx] = SENNA_DATA[emb_dictionary[word]]
     return initial_matrix

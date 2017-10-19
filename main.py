@@ -1,7 +1,7 @@
 import optparse
 import os
 from collections import OrderedDict
-from loader import prepare_dictionaries, get_word_embedding_matrix
+from loader import prepare_dictionaries, get_word_embedding_matrix, get_senna_embedding_matrix
 import Autoencoder
 
 import torch
@@ -128,8 +128,12 @@ def main():
     # If using pre-train, we need to initialize word-embedding layer
     if opts.pre_emb and not opts.load:
         print("Initialize the word-embedding layer")
-        initial_matrix = get_word_embedding_matrix(dictionaries['word_to_id'], 
+        if 'glove' in opts.pre_emb:
+            initial_matrix = get_word_embedding_matrix(dictionaries['word_to_id'], 
                     opts.pre_emb, opts.embedding_dim)
+        else:
+            assert 'senna' in opts.pre_emb
+            initial_matrix = get_senna_embedding_matrix(dictionaries['word_to_id'])
         model.init_word_embedding(initial_matrix)
 
     # Load pre-trained model
