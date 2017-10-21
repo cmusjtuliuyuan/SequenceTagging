@@ -10,8 +10,8 @@ from Autoencoder import grads
 
 BATCH_SIZE = 32
 LEARNING_RATE = 0.1
-NUM_EPOCH = 30
-US_FACTOR = 20
+NUM_EPOCH = 50
+US_FACTOR = 2
 SUPERVISED = True
 UNSUPERVISED = False
 
@@ -21,18 +21,16 @@ def adjust_learning_rate(optimizer, lr):
 
 def train(model, Parse_parameters, opts, dictionaries):
     # Prepare unsupervised dataset:
-    path = 'data/wiki'
+    path = 'data/wiki100'
     TEMP_PATH = 'models/tmp_model.mdl'
     files = os.listdir(path)
     # filter .DS_Store ...
-    files = [ x for x in files if not '.DS_Store' in x]
+    files = [ x for x in files if 'wiki100' in x]
 
     train_data = load_dataset(Parse_parameters, opts.train, dictionaries)
     dev_data = load_dataset(Parse_parameters, opts.dev, dictionaries)
-    optimizer_s = optim.SGD(list(model.word_embeds.parameters())+\
-                            list(model.encoder.parameters())+\
-                            list(model.decoder.parameters()), lr=LEARNING_RATE)
-    optimizer_us = optim.SGD(list(model.word_embeds.parameters())+\
+    optimizer_s = optim.SGD(model.parameters(), lr=LEARNING_RATE)
+    optimizer_us = optim.SGD(model.embeds_parameters+\
                             list(model.decoder.parameters()), lr=LEARNING_RATE)
 
     for epoch in xrange(1, NUM_EPOCH+1):
@@ -54,23 +52,25 @@ def train(model, Parse_parameters, opts, dictionaries):
                 torch.save(model.state_dict(), TEMP_PATH)
 
             # check overfit:
-            if len(FB1array)>10:
+            if len(FB1array)>5:
                 if FB1array[-1]<FB1array[-2] and FB1array[-2]<FB1array[-3]:
                     overfit = True
-            if len(FB1array)>20:
+            if len(FB1array)>15:
                 overfit = True
 
-        # unsupervised train
+        
         model.load_state_dict(torch.load(TEMP_PATH))
         adjust_learning_rate(optimizer_s, LEARNING_RATE/10)
-        for _ in range(2):
+        for _ in range(5):
             train_epoch(model, train_data, opts, optimizer_s, SUPERVISED)
             result = evaluate(model, dev_data, dictionaries)
-        
+    
+        # unsupervised train
+        adjust_learning_rate(optimizer_s, LEARNING_RATE)
         for i in range(US_FACTOR):
             unlabel_data_file_name = files[(US_FACTOR*epoch + i - 1)%len(files)]
             unlabel_data = load_dataset(Parse_parameters,
-                'data/wiki/'+unlabel_data_file_name, dictionaries, UNSUPERVISED)
+                path+'/'+unlabel_data_file_name, dictionaries, UNSUPERVISED)
             train_epoch(model, unlabel_data, opts, optimizer_us, UNSUPERVISED)
 
 
@@ -95,10 +95,15 @@ def train_epoch(model, train_data, opts, optimizer, supervised = True):
 
     model.train()
     sentences = []
+    # increase the batchsize in unsupervised training to speed up
+    if supervised:
+        batchsize = BATCH_SIZE
+    else:
+        batchsize = 4*BATCH_SIZE
     for i, index in enumerate(np.random.permutation(len(train_data))):
         # Prepare batch dataset
         sentences.append(train_data[index])
-        if len(sentences) == BATCH_SIZE:
+        if len(sentences) == batchsize:
             # Train the model
             train_batch(model, sentences, opts, optimizer, supervised)
             # Clear old batch

@@ -28,7 +28,7 @@ optparser.add_option(
     type='int', help="Replace digits with 0"
 )
 optparser.add_option(
-    "-p", "--pre_emb", default= 'embedding/glove.6B.100d.txt',
+    "-p", "--pre_emb", default= None, #'senna',
     help="Location of pretrained embeddings"
 )
 optparser.add_option(
@@ -36,7 +36,7 @@ optparser.add_option(
     type='int', help="vocab_size"
 )
 optparser.add_option(
-    "-e", "--embedding_dim", default="100",
+    "-e", "--embedding_dim", default="50",
     type='int', help="words hidden dimension"
 )
 optparser.add_option(
@@ -48,7 +48,7 @@ optparser.add_option(
     type='int', help="Char LSTM hidden layer size"
 )
 optparser.add_option(
-    "-d", "--hidden_dim", default="200",
+    "-d", "--hidden_dim", default="300",
     type='int', help="LSTM hidden dimension"
 )
 optparser.add_option(

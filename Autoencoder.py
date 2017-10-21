@@ -53,12 +53,18 @@ class Autoencoder(nn.Module):
         #                    num_layers=1, batch_first = True)
         self.decoder = nn.Linear(self.tagset_size, self.vocab_size)
         self.loss_function = nn.CrossEntropyLoss(ignore_index = self.vocab_size+1)
+        self.embeds_parameters = list(self.word_embeds.parameters())\
+                                + list(self.cap_embeds.parameters())\
+                                + list(self.letter_digits_embeds.parameters())
         if self.char_dim!=0:
             self.char_embeds = nn.Embedding(self.char_size, self.char_dim)
             self.char_lstm_forward = nn.LSTM(self.char_dim, self.char_lstm_dim,
                             num_layers=1, batch_first = False)
             self.char_lstm_backward = nn.LSTM(self.char_dim, self.char_lstm_dim,
                             num_layers=1, batch_first = False)
+            self.embeds_parameters += list(self.char_embeds.parameters())\
+                                + list(self.char_lstm_forward.parameters())\
+                                + list(self.char_lstm_backward.parameters())
 
 
     def init_word_embedding(self, init_matrix):
