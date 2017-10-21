@@ -60,11 +60,7 @@ optparser.add_option(
     help="Wheter freeze the embedding layer or not"
 )
 optparser.add_option(
-    "-s", "--save", default='model',
-    help="Model and dictionareis stored postition"
-)
-optparser.add_option(
-    "--load", default=None,
+    "--load", default=None,#'models/model2.mdl',
     help="Load pre-trained Model and dictionaries"
 )
 optparser.add_option(
@@ -95,15 +91,7 @@ def main():
         assert opts.embedding_dim in [50, 100, 200, 300]
         assert opts.lower == 1
 
-    # load datasets
-    if not opts.load:
-        dictionaries = prepare_dictionaries(Parse_parameters)
-    else:
-        # load dictionaries
-        with open(opts.load+'/dictionaries.dic', 'rb') as f:
-            dictionaries = cPickle.load(f)
-        # load parameters
-        opts = load_parameters(opts.load, opts)
+    dictionaries = prepare_dictionaries(Parse_parameters)
 
     # Model parameters
     Model_parameters = OrderedDict()
@@ -136,13 +124,9 @@ def main():
             initial_matrix = get_senna_embedding_matrix(dictionaries['word_to_id'])
         model.init_word_embedding(initial_matrix)
 
-    # Load pre-trained model
-    if opts.load:
-      model.load_state_dict(torch.load(opts.load+'/model.mdl'))
     
     train(model, Parse_parameters, opts, dictionaries)
-    # Save model and dictionaries
-    save_model_dictionaries('model', model, dictionaries, opts)
+
 
 
 
