@@ -81,17 +81,13 @@ def train_epoch(model, train_data, opts, optimizer, supervised = True):
 
         model.zero_grad()
         if supervised:
-            loss, flag = model.get_loss_supervised(sentences)
+            loss = model.get_loss_supervised(sentences)
         else:
-            loss, flag = model.get_loss_unsupervised(sentences)
-        if flag:
-            # flag is to check whether the max_length < 80 or not
-            loss.backward()
-            #print loss.data
-            nn.utils.clip_grad_norm(model.parameters(), opts.clip)
-            #print 'supervised = ', supervised, torch.max(grads['embeds']).data.cpu().numpy()
-            #print 'loss:', loss.data.cpu().numpy()
-            optimizer.step()
+            loss = model.get_loss_unsupervised(sentences)
+
+        loss.backward()
+        nn.utils.clip_grad_norm(model.parameters(), opts.clip)
+        optimizer.step()
 
     model.train()
     sentences = []

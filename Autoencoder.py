@@ -146,23 +146,21 @@ class Autoencoder(nn.Module):
 
         embeds, lens = self.get_embeds(sentences)
         loss = self.encoder.get_loss(embeds, lens, labels)
-        return loss, True
+        return loss
 
     def get_loss_unsupervised(self, sentences): # unsupervised loss
 
         input_words = autograd.Variable(torch.LongTensor(sentences2padded(sentences, 'words', 
                                 replace = self.vocab_size+1)).contiguous())
         max_length = input_words.size()[1]
-        if max_length < 80:
-            if self.is_cuda:
-                input_words = input_words.cuda()
-            decoder_out, embeds = self.forward(sentences)
-            
-            loss = self.loss_function(decoder_out.contiguous().view(-1, self.vocab_size),
-                                        input_words.contiguous().view(-1))
-            #print loss.data.cpu().numpy()
-            return loss, True
-        return None, False
+        if self.is_cuda:
+            input_words = input_words.cuda()
+        decoder_out, embeds = self.forward(sentences)
+        
+        loss = self.loss_function(decoder_out.contiguous().view(-1, self.vocab_size),
+                                    input_words.contiguous().view(-1))
+        #print loss.data.cpu().numpy()
+        return loss
         '''
         lens = autograd.Variable(torch.LongTensor(get_lens(sentences, 'words')))
         if self.is_cuda:
