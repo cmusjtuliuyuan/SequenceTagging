@@ -20,9 +20,21 @@ def adjust_learning_rate(optimizer, lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
-def train_supervised_then_unsupervised(model, optimizer_s, optimizer_us,
-        train_data, dev_data, dictionaries, epoch, files, opts, Parse_parameters):
+def unsupervided_train(model, Parse_parameters, opts, dictionaries,
+                    unsupervised_index):
+    path = 'data/wiki100'
+    files = os.listdir(path)
+    files = [ x for x in files if 'wiki100' in x]
+    files.sort()
+    optimizer_us = optim.SGD(model.embeds_parameters+\
+                            list(model.decoder.parameters()), lr=LEARNING_RATE)
     
+    unlabel_data_file_name = files[unsupervised_index%len(files)]
+    unlabel_data = load_dataset(Parse_parameters,
+        'data/wiki100/'+unlabel_data_file_name, dictionaries, UNSUPERVISED)
+    train_epoch(model, unlabel_data, opts, optimizer_us, UNSUPERVISED)
+
+def supervised_train(model, Parse_parameters, opts, dictionaries, TEMP_PATH):
     def train_until_overfit(begin, end):
         overfit = False
         FB1array = []
@@ -44,48 +56,40 @@ def train_supervised_then_unsupervised(model, optimizer_s, optimizer_us,
             if len(FB1array)>end:
                 overfit = True
 
-    # supervised train, early stop and adjust learning rate
+    train_data = load_dataset(Parse_parameters, opts.train, dictionaries)
+    dev_data = load_dataset(Parse_parameters, opts.dev, dictionaries)
+    optimizer_s = optim.SGD(model.parameters(), lr=LEARNING_RATE)
+
     TEMP_PATH = 'models/tmp_model.mdl'
     adjust_learning_rate(optimizer_s, LEARNING_RATE)
     train_until_overfit(5,15)
     model.load_state_dict(torch.load(TEMP_PATH))
     adjust_learning_rate(optimizer_s, LEARNING_RATE/10)
     train_until_overfit(5,10)
-    model.load_state_dict(torch.load(TEMP_PATH))
-
-    # unsupervised train
-    for i in range(US_FACTOR):
-        unlabel_data_file_name = files[(US_FACTOR*epoch + i - 1)%len(files)]
-        unlabel_data = load_dataset(Parse_parameters,
-            'data/wiki100/'+unlabel_data_file_name, dictionaries, UNSUPERVISED)
-        train_epoch(model, unlabel_data, opts, optimizer_us, UNSUPERVISED)
 
 def train(model, Parse_parameters, opts, dictionaries):
     # Prepare unsupervised dataset:
-    path = 'data/wiki100'
     TEMP_PATH = 'models/tmp_model.mdl'
-    files = os.listdir(path)
-    files = [ x for x in files if 'wiki100' in x]
-    files.sort()
-    train_data = load_dataset(Parse_parameters, opts.train, dictionaries)
-    dev_data = load_dataset(Parse_parameters, opts.dev, dictionaries)
-    optimizer_s = optim.SGD(model.parameters(), lr=LEARNING_RATE)
-    optimizer_us = optim.SGD(model.embeds_parameters+\
-                            list(model.decoder.parameters()), lr=LEARNING_RATE)
+    epoch_begin = 1
+    
     if opts.load:
         epoch_begin = int(re.search(r'\d+', opts.load).group())+1
         model.load_state_dict(torch.load(opts.load))
-	print 'load:', opts.load
-    else:
-        epoch_begin = 1
-    print 'Start epoch from:', epoch_begin
+        print 'load:', opts.load
+    print 'begin to train epoch:', epoch_begin
 
-    for epoch in xrange(epoch_begin, epoch_begin+NUM_EPOCH):
-        print("Train epoch: %d"%(epoch))
-        train_supervised_then_unsupervised(model, optimizer_s, optimizer_us,
-                train_data, dev_data, dictionaries, epoch, files, opts, Parse_parameters)
-        torch.save(model.state_dict(), 'models/model%d.mdl'%(epoch,))
+        
+    if opts.type == 'supervised':
+        supervised_train(model, Parse_parameters, opts, dictionaries, TEMP_PATH)
 
+
+    if 'unsupervised' in opts.type:
+        unsupervised_index = US_FACTOR*(epoch_begin-1)+int(re.search(r'\d+', opts.type).group())
+        unsupervided_train(model, Parse_parameters, opts, dictionaries,
+                    unsupervised_index)
+
+    torch.save(model.state_dict(), opts.store)
+    print 'save model in: %s'%(opts.store,)
 
 def train_epoch(model, train_data, opts, optimizer, supervised = True):
 

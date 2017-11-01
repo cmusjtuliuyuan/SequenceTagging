@@ -67,7 +67,14 @@ optparser.add_option(
     "--cuda", default=True,
     help="Load pre-trained Model and dictionaries"
 )
-
+optparser.add_option(
+    "--type", default='supervised',
+    type = 'string', help="Do supervised training or not"
+)
+optparser.add_option(
+    "--store", default=None,
+    type = 'string', help="Where to store the model"
+)
 # TODO delete lower
 
 def main():
@@ -87,6 +94,7 @@ def main():
     # Check parameters validity
     assert os.path.isfile(opts.train)
     assert os.path.isfile(opts.dev)
+    assert opts.type == 'supervised' or 'unsupervised' in opts.type
     if opts.pre_emb:
         assert opts.embedding_dim in [50, 100, 200, 300]
         assert opts.lower == 1
