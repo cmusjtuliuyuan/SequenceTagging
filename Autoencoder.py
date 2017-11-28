@@ -2,6 +2,7 @@ import torch
 import torch.autograd as autograd
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.nn.init as I
 import numpy as np
 import LstmCrfModel
 from utils import sentences2padded, char2padded, get_lens, sequence_mask
@@ -46,7 +47,11 @@ class Autoencoder(nn.Module):
         
         self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim)
         self.cap_embeds = nn.Embedding(FEATURE_DIM['caps'], FEATURE_DIM['caps'])
-        self.letter_digits_embeds = nn.Embedding(FEATURE_DIM['letter_digits'], FEATURE_DIM['letter_digits'])
+        self.letter_digits_embeds = nn.Embedding(FEATURE_DIM['letter_digits'],
+                                                 FEATURE_DIM['letter_digits'])
+        I.xavier_normal(self.word_embeds.weight.data)
+        I.xavier_normal(self.cap_embeds.weight.data)
+        I.xavier_normal(self.letter_digits_embeds.weight.data)
 
         self.encoder = LstmCrfModel.LSTM_CRF(parameter)
         #self.decoder = nn.LSTM(self.tagset_size, self.vocab_size,
@@ -65,6 +70,7 @@ class Autoencoder(nn.Module):
             self.embeds_parameters += list(self.char_embeds.parameters())\
                                 + list(self.char_lstm_forward.parameters())\
                                 + list(self.char_lstm_backward.parameters())
+            I.xavier_normal(self.char_embeds.weight.data)
 
 
     def init_word_embedding(self, init_matrix):
