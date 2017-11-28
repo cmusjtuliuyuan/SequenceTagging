@@ -20,21 +20,26 @@ def adjust_learning_rate(optimizer, lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
-def unsupervided_train(model, Parse_parameters, opts, dictionaries,
-                    unsupervised_index):
-    path = 'data/wiki100'
-    files = os.listdir(path)
-    files = [ x for x in files if 'wiki100' in x]
-    files.sort()
+def unsupervided_train(model, Parse_parameters, opts, dictionaries):
+
     optimizer_us = optim.SGD(model.embeds_parameters+\
                             list(model.decoder.parameters()), lr=LEARNING_RATE)
-    
-    unlabel_data_file_name = files[unsupervised_index%len(files)]
-    unlabel_data = load_dataset(Parse_parameters,
-        'data/wiki100/'+unlabel_data_file_name, dictionaries, UNSUPERVISED)
+
+    unlabel_data, frequency = load_dataset(Parse_parameters,
+        opts.unsupervised_path, dictionaries, UNSUPERVISED)
+    frequency = [0.0001 / (0.0001 + float(p) / sum(frequency)) for p in frequency]
+    if torch.cuda.is_available():
+        frequency = torch.Tensor(frequency).cuda()
+    else:
+        frequency = torch.Tensor(frequency)
+    model.word_embeds.reset_frequency(scale_grad_by_freq=True, subsample=True, frequency=frequency)
+
     train_epoch(model, unlabel_data, opts, optimizer_us, UNSUPERVISED)
 
-def supervised_train(model, Parse_parameters, opts, dictionaries, TEMP_PATH):
+
+def supervised_train(model, Parse_parameters, opts, dictionaries):
+    model.word_embeds.reset_frequency(scale_grad_by_freq=False, subsample=False, frequency=None)
+    TEMP_PATH = 'model/tmp_model.mdl'
     def train_until_overfit(begin, end):
         overfit = False
         FB1array = []
@@ -56,40 +61,24 @@ def supervised_train(model, Parse_parameters, opts, dictionaries, TEMP_PATH):
             if len(FB1array)>end:
                 overfit = True
 
-    train_data = load_dataset(Parse_parameters, opts.train, dictionaries)
-    dev_data = load_dataset(Parse_parameters, opts.dev, dictionaries)
+    train_data, _ = load_dataset(Parse_parameters, opts.train, dictionaries)
+    dev_data, _ = load_dataset(Parse_parameters, opts.dev, dictionaries)
     optimizer_s = optim.SGD(model.parameters(), lr=LEARNING_RATE)
 
-    TEMP_PATH = 'models/tmp_model.mdl'
     adjust_learning_rate(optimizer_s, LEARNING_RATE)
     train_until_overfit(5,15)
     model.load_state_dict(torch.load(TEMP_PATH))
     adjust_learning_rate(optimizer_s, LEARNING_RATE/10)
     train_until_overfit(5,10)
 
+
 def train(model, Parse_parameters, opts, dictionaries):
-    # Prepare unsupervised dataset:
-    TEMP_PATH = 'models/tmp_model.mdl'
-    epoch_begin = 1
-    
-    if opts.load:
-        epoch_begin = int(re.search(r'\d+', opts.load).group())+1
-        model.load_state_dict(torch.load(opts.load))
-        print 'load:', opts.load
-    print 'begin to train epoch:', epoch_begin
-
-        
     if opts.type == 'supervised':
-        supervised_train(model, Parse_parameters, opts, dictionaries, TEMP_PATH)
-
+        supervised_train(model, Parse_parameters, opts, dictionaries)
 
     if 'unsupervised' in opts.type:
-        unsupervised_index = US_FACTOR*(epoch_begin-1)+int(re.search(r'\d+', opts.type).group())
-        unsupervided_train(model, Parse_parameters, opts, dictionaries,
-                    unsupervised_index)
+        unsupervided_train(model, Parse_parameters, opts, dictionaries)
 
-    torch.save(model.state_dict(), opts.store)
-    print 'save model in: %s'%(opts.store,)
 
 def train_epoch(model, train_data, opts, optimizer, supervised = True):
 
@@ -109,14 +98,10 @@ def train_epoch(model, train_data, opts, optimizer, supervised = True):
     model.train()
     sentences = []
     # increase the batchsize in unsupervised training to speed up
-    if supervised:
-        batchsize = BATCH_SIZE
-    else:
-        batchsize = 4*BATCH_SIZE
     for i, index in enumerate(np.random.permutation(len(train_data))):
         # Prepare batch dataset
         sentences.append(train_data[index])
-        if len(sentences) == batchsize:
+        if len(sentences) == BATCH_SIZE:
             # Train the model
             train_batch(model, sentences, opts, optimizer, supervised)
             # Clear old batch

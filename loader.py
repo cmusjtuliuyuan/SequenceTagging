@@ -105,6 +105,8 @@ def prepare_dataset(sentences, word_to_id, char_to_id,tag_to_id, lower=False, su
     """
     def f(x): return x.lower() if lower else x
     data = []
+    vocab_size = len(word_to_id)
+    frequency = np.zeros(vocab_size)
     for s in sentences:
         str_words = [w[0] for w in s]
         words = [word_to_id[f(w) if f(w) in word_to_id else '<UNK>']
@@ -126,7 +128,10 @@ def prepare_dataset(sentences, word_to_id, char_to_id,tag_to_id, lower=False, su
             tags = [tag_to_id[w[-1]] for w in s]
             data[-1]['pos']=pos;
             data[-1]['tags']=tags;
-    return data
+        # Prepare frequency for unsupervised embedding training
+        for w in words:
+            frequency[w] += 1
+    return data, frequency
 
 def prepare_dictionaries(parameters):
     lower = parameters['lower']
@@ -172,12 +177,12 @@ def load_dataset(parameters, path, dictionaries, supervised = True):
 
     # Load sentences
     sentences = load_sentences(path, zeros)
-    dataset = prepare_dataset(
+    dataset, frequency = prepare_dataset(
         sentences, dictionaries['word_to_id'], dictionaries['char_to_id'], 
         dictionaries['tag_to_id'], lower, supervised
     )
     print("%i sentences in %s ."%(len(dataset), path))
-    return dataset
+    return dataset, frequency
 
 def get_word_embedding_matrix(dictionary, pre_train, embedding_dim):
     emb_dictionary = read_pre_training(pre_train)

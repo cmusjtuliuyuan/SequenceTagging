@@ -64,10 +64,6 @@ optparser.add_option(
     help="Load pre-trained Model and dictionaries"
 )
 optparser.add_option(
-    "--cuda", default=True,
-    help="Load pre-trained Model and dictionaries"
-)
-optparser.add_option(
     "--type", default='supervised',
     type = 'string', help="Do supervised training or not"
 )
@@ -75,12 +71,17 @@ optparser.add_option(
     "--store", default=None,
     type = 'string', help="Where to store the model"
 )
+optparser.add_option(
+    "--unsupervised_path",
+    type = 'string', help="Where to load the unsupervised data"
+)
 # TODO delete lower
 
 def main():
     np.random.seed(15213)
     torch.manual_seed(15213)
     opts = optparser.parse_args()[0]
+    CUDA_AVAILABLE = torch.cuda.is_available()
 
     # Parse parameters
     Parse_parameters = OrderedDict()
@@ -111,15 +112,15 @@ def main():
     Model_parameters['tagset_size'] = len(dictionaries['tag_to_id'])
     Model_parameters['char_size'] = len(dictionaries['char_to_id'])
     Model_parameters['freeze'] = opts.freeze
-    Model_parameters['cuda'] = opts.cuda
+    Model_parameters['cuda'] = CUDA_AVAILABLE
 
 
     #model = LstmModel.LSTMTagger(Model_parameters)
     model = Autoencoder.Autoencoder(Model_parameters)
-    if opts.cuda:
+    if CUDA_AVAILABLE:
         model = model.cuda()
     # gradients are allocated lazily, so they are not shared here
-    model.share_memory()
+    #model.share_memory()
 
     # If using pre-train, we need to initialize word-embedding layer
     if opts.pre_emb and not opts.load:
@@ -132,10 +133,15 @@ def main():
             initial_matrix = get_senna_embedding_matrix(dictionaries['word_to_id'])
         model.init_word_embedding(initial_matrix)
 
-    
+    if opts.load:
+        model.load_state_dict(torch.load(opts.load))
+        print 'load:', opts.load
+
     train(model, Parse_parameters, opts, dictionaries)
 
-
+    if opts.store:
+        torch.save(model.state_dict(), opts.store)
+        print 'save model in: %s'%(opts.store,)
 
 
 if __name__ == '__main__':
