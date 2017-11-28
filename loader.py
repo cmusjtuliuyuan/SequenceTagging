@@ -60,21 +60,12 @@ def word_mapping(sentences, lower,vocabulary_size, pre_train = None):
     """
     words = [[x[0].lower() if lower else x[0] for x in s] for s in sentences]
     dico = create_dico(words)
-    word_to_id, id_to_word = create_mapping(dico, vocabulary_size)
+    word_to_id, id_to_word, id_to_frequency = create_mapping(dico, vocabulary_size, True)
     print ("Found %i unique words (%i in total)" % 
         (len(dico), sum(len(x) for x in words))
     )
 
-    if pre_train:
-        emb_dictionary = read_pre_training(pre_train)
-        for word in dico.iterkeys():
-        	  if word not in emb_dictionary:
-        	  	  dico[word]=0
-        	  	  
-    dico['<UNK>'] = 10000000
-    word_to_id, id_to_word = create_mapping(dico, vocabulary_size)
-
-    return dico, word_to_id, id_to_word
+    return dico, word_to_id, id_to_word, id_to_frequency
 
 
 def tag_mapping(sentences):
@@ -174,10 +165,10 @@ def prepare_dictionaries(parameters):
     if parameters['pre_emb']:
         dev_sentences = load_sentences(dev_path,  zeros)
         sentences = train_sentences + dev_sentences
-        dico_words, word_to_id, id_to_word = word_mapping(sentences, 
+        dico_words, word_to_id, id_to_word, id_to_frequency = word_mapping(sentences,
                                    lower,vocabulary_size, parameters['pre_emb'])
     else:
-        dico_words, word_to_id, id_to_word = word_mapping(train_sentences, 
+        dico_words, word_to_id, id_to_word, id_to_frequency = word_mapping(train_sentences,
                                     lower,vocabulary_size, parameters['pre_emb'])
     dico_tags, tag_to_id, id_to_tag = tag_mapping(train_sentences)
 
@@ -186,6 +177,7 @@ def prepare_dictionaries(parameters):
         'id_to_word': id_to_word,
         'tag_to_id': tag_to_id,
         'id_to_tag': id_to_tag,
+        'id_to_frequency': id_to_frequency,
     }
 
     return dictionaries

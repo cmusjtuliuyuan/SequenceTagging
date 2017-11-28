@@ -25,16 +25,24 @@ def create_dico(item_list):
                 dico[item] += 1
     return dico
 
-def create_mapping(dico, vocabulary_size=2000):
+def create_mapping(dico, vocabulary_size=2000, frequency=False):
     """
     Create a mapping (item to ID / ID to item) from a dictionary.
     Items are ordered by decreasing frequency.
     """
     sorted_items = sorted(dico.items(), 
-            key=lambda x: (-x[1], x[0]))[:vocabulary_size]
-    id_to_item = {i: v[0] for i, v in enumerate(sorted_items)}
+            key=lambda x: (-x[1], x[0]))
+    sorted_items_first = sorted_items[:vocabulary_size-1]
+    sorted_items_left = sorted_items[vocabulary_size-1:]
+    id_to_item = {i: v[0] for i, v in enumerate(sorted_items_first)}
+    id_to_item[vocabulary_size-1] = '<UNK>'
     item_to_id = {v: k for k, v in id_to_item.items()}
-    return item_to_id, id_to_item
+    id_to_frequency = {i: v[1] for i, v in enumerate(sorted_items_first)}
+    id_to_frequency[vocabulary_size-1] = sum([v[1] for i, v in enumerate(sorted_items_left)])
+    if frequency:
+        return item_to_id, id_to_item, id_to_frequency
+    else:
+        return item_to_id, id_to_item
 
 def read_pre_training(emb_path):
     """

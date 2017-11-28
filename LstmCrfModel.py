@@ -39,8 +39,12 @@ class LSTM_CRF(nn.Module):
         self.vocab_size = parameter['vocab_size']
         self.tagset_size = parameter['tagset_size']
         self.freeze = parameter['freeze']
-        
-        self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim)
+        if parameter['subsample']:
+            print '_______________'
+            self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim,
+                scale_grad_by_freq=True, subsample=True, frequency=parameter['frequency'])
+        else:
+            self.word_embeds = nn.Embedding(self.vocab_size, self.embedding_dim)
         # Ignore hand engineer now
         #self.lstm = nn.LSTM(self.embedding_dim + sum(FEATURE_DIM.values()), 
         self.lstm = nn.LSTM(self.embedding_dim,

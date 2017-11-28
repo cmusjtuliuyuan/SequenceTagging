@@ -10,7 +10,7 @@ import os
 
 BATCH_SIZE = 32
 LEARNING_RATE = 0.1
-EVALUATE_EVERY = 3
+EVALUATE_EVERY = 1
 NUM_EPOCH = 30
 
 def adjust_learning_rate(optimizer, lr, epoch):

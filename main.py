@@ -58,7 +58,10 @@ optparser.add_option(
     "--load", default=None,
     help="Load pre-trained Model and dictionaries"
 )
-
+optparser.add_option(
+    "--subsample", default='1',
+    type='int', help="Wheter use subsampling to train the embedding"
+)
 # TODO delete lower
 
 def main():
@@ -99,9 +102,18 @@ def main():
     Model_parameters['hidden_dim'] = opts.hidden_dim
     Model_parameters['tagset_size'] = len(dictionaries['tag_to_id'])
     Model_parameters['freeze'] = opts.freeze
+    Model_parameters['subsample'] = (opts.subsample == 1)
 
+    # Prepare frequency for subsample:
+    if opts.subsample == 1:
+        sorted_items = sorted(dictionaries['id_to_frequency'].items(),
+            key=lambda x: (x[0], x[1]))
+        frequency = [v[1] for v in sorted_items]
+        #frequency = [0.0001 / (0.0001 + p / sum(frequency)) for p in frequency]
+        frequency = [0.0001 / (0.0001 + float(p) / sum(frequency)) for p in frequency]
+        frequency = torch.Tensor(frequency)
+        Model_parameters['frequency'] = frequency
 
-    #model = LstmModel.LSTMTagger(Model_parameters)
     model = LstmCrfModel.LSTM_CRF(Model_parameters)
     # gradients are allocated lazily, so they are not shared here
     model.share_memory()
