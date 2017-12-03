@@ -25,7 +25,8 @@ def adjust_learning_rate(optimizer, lr):
 def unsupervided_train(model, Parse_parameters, opts, dictionaries):
 
     optimizer_us = optim.SGD(model.embeds_parameters+\
-                            list(model.decoder.parameters()), lr=LEARNING_RATE)
+                            list(model.decoder.parameters())+\
+                            list(model.CBOW_linear.parameters()), lr=LEARNING_RATE)
 
     unlabel_data, frequency = load_dataset(Parse_parameters,
         opts.unsupervised_path, dictionaries, UNSUPERVISED)
