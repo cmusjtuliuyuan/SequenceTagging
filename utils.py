@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import cPickle
 import json
 
+BATCH_SIZE = 32
 
 def create_dico(item_list):
     """
@@ -163,3 +164,39 @@ def char2padded(sentences, replace = 0):
         backward_chars.append(backward_padded)
         lens_chars.append(length)
     return forward_chars, backward_chars, lens_chars, max_char_length
+
+def sentences2CBOW(sentences):
+    # keywords: words
+    # Form Batch_Size * Length
+    '''
+    max_length = max([len(sentence[keyword]) for sentence in sentences])
+    def pad_seq(seq, max_length):
+        padded_seq = seq + [replace for i in range(max_length - len(seq))]
+        return padded_seq
+    padded =[pad_seq(sentence[keyword], max_length) for sentence in sentences]
+    return padded
+    '''
+    target_list = []
+    context_list = []
+    for sentence in sentences:
+        words_list = sentence['words']
+        for i in range(len(words_list)-4):
+            target = words_list[i+2]
+            context = [words_list[i], words_list[i+1],
+                       words_list[i+3], words_list[i+4]]
+            target_list.append(target)
+            context_list.append(context)
+
+    tuple_number = len(context_list)
+    batch_number = (tuple_number-1)/BATCH_SIZE+1
+
+    target_batch_list = []
+    context_batch_list = []
+    for i in range(batch_number-1):
+        target_batch_list.append([target_list[i*BATCH_SIZE+j] for j in range(BATCH_SIZE)])
+        context_batch_list.append([context_list[i*BATCH_SIZE+j] for j in range(BATCH_SIZE)])
+
+    target_batch_list.append(target_list[(batch_number-1)*BATCH_SIZE:])
+    context_batch_list.append(context_list[(batch_number-1)*BATCH_SIZE:])
+
+    return target_batch_list, context_batch_list

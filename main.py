@@ -75,6 +75,10 @@ optparser.add_option(
     "--unsupervised_path",
     type = 'string', help="Where to load the unsupervised data"
 )
+optparser.add_option(
+    "--is_cbow", default="0",
+    type = 'int', help="Wheter use CBOW to train embedding"
+)
 # TODO delete lower
 
 def main():

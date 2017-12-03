@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import torch.nn.init as I
 import numpy as np
 import LstmCrfModel
-from utils import sentences2padded, char2padded, get_lens, sequence_mask
+from utils import sentences2padded, char2padded, get_lens, sequence_mask, sentences2CBOW
 from loader import FEATURE_DIM
 
 grads = {}
@@ -71,6 +71,10 @@ class Autoencoder(nn.Module):
                                 + list(self.char_lstm_forward.parameters())\
                                 + list(self.char_lstm_backward.parameters())
             I.xavier_normal(self.char_embeds.weight.data)
+
+        """CBOW Part"""
+        self.CBOW_linear = nn.Linear(self.embedding_dim, self.vocab_size)
+        self.CBOW_loss_function = nn.CrossEntropyLoss()
 
 
     def init_word_embedding(self, init_matrix):
@@ -184,6 +188,19 @@ class Autoencoder(nn.Module):
             return loss, True
         return None, False
         '''
+    def get_loss_unsupervised_CBOW(self, target, context):
+        # target: batch_size
+        # context: batch_size * 4
+        target = autograd.Variable(torch.LongTensor(target))
+        context = autograd.Variable(torch.LongTensor(context))
+        if self.is_cuda:
+            target = target.cuda()
+            context = context.cuda()
+        context_embeds = self.word_embeds(context)
+        context_embeds_linear = self.CBOW_linear(context_embeds)
+        context_out = torch.sum(context_embeds_linear, dim=1)
+        loss = self.CBOW_loss_function(F.relu(context_out), target)
+        return loss
 
 
     def forward(self, sentences):

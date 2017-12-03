@@ -8,6 +8,7 @@ import codecs
 import os
 from Autoencoder import grads
 import re
+from utils import sentences2CBOW
 
 BATCH_SIZE = 32
 LEARNING_RATE = 0.1
@@ -15,6 +16,7 @@ NUM_EPOCH = 1
 US_FACTOR = 2
 SUPERVISED = True
 UNSUPERVISED = False
+
 
 def adjust_learning_rate(optimizer, lr):
     for param_group in optimizer.param_groups:
@@ -32,7 +34,7 @@ def unsupervided_train(model, Parse_parameters, opts, dictionaries):
         frequency = torch.Tensor(frequency).cuda()
     else:
         frequency = torch.Tensor(frequency)
-    model.word_embeds.reset_frequency(scale_grad_by_freq=True, subsample=True, frequency=frequency)
+    model.word_embeds.reset_frequency(scale_grad_by_freq=False, subsample=True, frequency=frequency)
 
     train_epoch(model, unlabel_data, opts, optimizer_us, UNSUPERVISED)
 
@@ -84,16 +86,30 @@ def train_epoch(model, train_data, opts, optimizer, supervised = True):
 
     def train_batch(model, sentences, opts, optimizer, supervised = True):
         sentences.sort(key = lambda sentence: -len(sentence['words']))
-
-        model.zero_grad()
+        # SUPERVISED
         if supervised:
+            model.zero_grad()
             loss = model.get_loss_supervised(sentences)
-        else:
+            loss.backward()
+            nn.utils.clip_grad_norm(model.parameters(), opts.clip)
+            optimizer.step()
+        # UNSUPERVISED:
+        if not supervised and opts.is_cbow == 0:
+            model.zero_grad()
             loss = model.get_loss_unsupervised(sentences)
+            loss.backward()
+            nn.utils.clip_grad_norm(model.parameters(), opts.clip)
+            optimizer.step()
+        # CBOW:
+        if not supervised and opts.is_cbow == 1:
+            target_batch_list, context_batch_list = sentences2CBOW(sentences)
+            for target, context in zip(target_batch_list, context_batch_list):
+                model.zero_grad()
+                loss = model.get_loss_unsupervised_CBOW(target, context)
+                loss.backward()
+                nn.utils.clip_grad_norm(model.parameters(), opts.clip)
+                optimizer.step()
 
-        loss.backward()
-        nn.utils.clip_grad_norm(model.parameters(), opts.clip)
-        optimizer.step()
 
     model.train()
     sentences = []
